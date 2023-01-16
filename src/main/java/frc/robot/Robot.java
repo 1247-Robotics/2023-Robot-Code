@@ -8,6 +8,7 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
 import com.revrobotics.CANSparkMax;
 
@@ -107,7 +108,14 @@ public class Robot extends TimedRobot {
 
   /** This function is called once when teleop is enabled. */
   @Override
-  public void teleopInit() {}
+  public void teleopInit() {
+    estop = false;
+    keepStopped = false;
+    prevPTS = false;
+    // trigger = false;
+    prevTrigger = false;
+    // pushToStop = false;
+  }
 
   /** This function is called periodically during operator control. */
   @Override
@@ -137,6 +145,10 @@ public class Robot extends TimedRobot {
       prevPTS = false;
     }
 
+    // send estop to shuffleboard
+    // update estop on shuffleboard
+    
+
     // get the value of axis 3
     double axis3 = (-m_joystick.getRawAxis(3)+1)/2;
 
@@ -159,14 +171,12 @@ public class Robot extends TimedRobot {
     // drive the robot
     d_drive.arcadeDrive(driveY*axis3, driveX*axis3);
 
-    // send the drivetrain to shuffleboard
-    SmartDashboard.putNumber("Left Master", m_leftMaster.get());
-    SmartDashboard.putNumber("Left Slave", m_leftSlave.get());
-    SmartDashboard.putNumber("Right Master", m_rightMaster.get());
-    SmartDashboard.putNumber("Right Slave", m_rightSlave.get());
+    // send data to shuffleboard
+    SmartDashboard.putBoolean("E-Stop", estop);
 
-    // send drivetrain d_drive to shuffleboard as a drivetrain widget
     SmartDashboard.putData("Drivetrain", d_drive);
+
+    // SmartDashboard.updateValues();
 
     // get the value of the trigger (button 1)
     prevTrigger = m_joystick.getRawButton(1);
@@ -175,11 +185,29 @@ public class Robot extends TimedRobot {
 
   /** This function is called once when the robot is disabled. */
   @Override
-  public void disabledInit() {}
+  public void disabledInit() {
+    // send 0 to the motors
+    d_drive.arcadeDrive(0, 0);
+    estop = false;
+    keepStopped = false;
+    prevPTS = false;
+    pushToStop = false;
+    trigger = false;
+    prevTrigger = false;
+  }
 
   /** This function is called periodically when disabled. */
   @Override
-  public void disabledPeriodic() {}
+  public void disabledPeriodic() {
+    // get the speed from the encoders
+    double leftSpeed = m_leftMaster.getEncoder().getVelocity();
+    double rightSpeed = m_rightMaster.getEncoder().getVelocity();
+
+    // if the speed is greater than 0.1 for either motor send an alert to driver station
+    if (leftSpeed > 0.1 || rightSpeed > 0.1) {
+      DriverStation.reportError("Motors are still moving!", false);
+    }
+  }
 
   /** This function is called once when test mode is enabled. */
   @Override
