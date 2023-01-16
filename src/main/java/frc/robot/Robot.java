@@ -41,6 +41,9 @@ public class Robot extends TimedRobot {
   public boolean prevTrigger = false;
   public boolean trigger = false;
   public boolean estop = false;
+  public boolean pushToStop = false;
+  public boolean prevPTS = false;
+  public boolean keepStopped = false;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -119,9 +122,19 @@ public class Robot extends TimedRobot {
 
     // get the value of the trigger
     trigger = m_joystick.getRawButton(1);
+    pushToStop = m_joystick.getRawButton(2);
 
     if (trigger == true && prevTrigger == false) {
       estop = !estop;
+      keepStopped = !keepStopped;
+    }
+
+    if (pushToStop == true && keepStopped == false) {
+      estop = true;
+      prevPTS = true;
+    } else if (prevPTS == true && keepStopped == false) {
+      estop = false;
+      prevPTS = false;
     }
 
     // get the value of axis 3
