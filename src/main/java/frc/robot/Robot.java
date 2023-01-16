@@ -45,6 +45,9 @@ public class Robot extends TimedRobot {
   public boolean pushToStop = false;
   public boolean prevPTS = false;
   public boolean keepStopped = false;
+  public boolean prevTurnMode = false;
+  public boolean turnMode = false;
+  public boolean invTurning = false;
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -115,6 +118,9 @@ public class Robot extends TimedRobot {
     // trigger = false;
     prevTrigger = false;
     // pushToStop = false;
+
+    // send the status of invTurning to the driver station
+    DriverStation.reportWarning("invTurning: " + invTurning, false);
   }
 
   /** This function is called periodically during operator control. */
@@ -131,6 +137,7 @@ public class Robot extends TimedRobot {
     // get the value of the trigger
     trigger = m_joystick.getRawButton(1);
     pushToStop = m_joystick.getRawButton(2);
+    turnMode = m_joystick.getRawButton(12);
 
     if (trigger == true && prevTrigger == false) {
       estop = !estop;
@@ -143,6 +150,10 @@ public class Robot extends TimedRobot {
     } else if (prevPTS == true && keepStopped == false) {
       estop = false;
       prevPTS = false;
+    }
+
+    if (turnMode == true && prevTurnMode == false) {
+      invTurning = !invTurning;
     }
 
     // send estop to shuffleboard
@@ -159,7 +170,7 @@ public class Robot extends TimedRobot {
     if (driveY < -0.1 && driveY > 0.1) {
       driveY = driveY * 0.2;
     }
-    if (driveY < -0.1) {
+    if (driveY < -0.1 && invTurning == true) {
       driveX = -driveX;
     }
 
@@ -180,6 +191,7 @@ public class Robot extends TimedRobot {
 
     // get the value of the trigger (button 1)
     prevTrigger = m_joystick.getRawButton(1);
+    prevTurnMode = m_joystick.getRawButton(12);
 
   }
 
