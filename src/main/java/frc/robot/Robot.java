@@ -38,6 +38,10 @@ public class Robot extends TimedRobot {
   // define the differential drive
   private final DifferentialDrive d_drive = new DifferentialDrive(m_leftMaster, m_rightMaster);
 
+  public boolean prevTrigger = false;
+  public boolean trigger = false;
+  public boolean estop = false;
+
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -109,12 +113,38 @@ public class Robot extends TimedRobot {
     double driveX = -m_joystick.getX();
     double driveY = -m_joystick.getY();
 
+    // round the joystick values to 2 decimal places
+    driveX = Math.round(driveX * 100.0) / 100.0;
+    driveY = Math.round(driveY * 100.0) / 100.0;
+
+    // get the value of the trigger
+    trigger = m_joystick.getRawButton(1);
+
+    if (trigger == true && prevTrigger == false) {
+      estop = !estop;
+    }
+
+    // get the value of axis 3
+    double axis3 = (-m_joystick.getRawAxis(3)+1)/2;
+
     // drive the values between -1 and 1 logarithmically
     // x = Math.log(x) / Math.log(2);
     // y = Math.log(y) / Math.log(2);
 
+    if (driveY < -0.1 && driveY > 0.1) {
+      driveY = driveY * 0.2;
+    }
+    if (driveY < -0.1) {
+      driveX = -driveX;
+    }
+
+    if (estop) {
+      driveX = 0;
+      driveY = 0;
+    }
+
     // drive the robot
-    d_drive.arcadeDrive(driveY, driveX);
+    d_drive.arcadeDrive(driveY*axis3, driveX*axis3);
 
     // send the drivetrain to shuffleboard
     SmartDashboard.putNumber("Left Master", m_leftMaster.get());
@@ -124,6 +154,9 @@ public class Robot extends TimedRobot {
 
     // send drivetrain d_drive to shuffleboard as a drivetrain widget
     SmartDashboard.putData("Drivetrain", d_drive);
+
+    // get the value of the trigger (button 1)
+    prevTrigger = m_joystick.getRawButton(1);
 
   }
 
