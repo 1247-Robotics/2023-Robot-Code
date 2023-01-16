@@ -106,15 +106,15 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     // get the joystick values in separate variables
-    double x = -m_joystick.getX();
-    double y = -m_joystick.getY();
+    double driveX = -m_joystick.getX();
+    double driveY = -m_joystick.getY();
 
     // drive the values between -1 and 1 logarithmically
     // x = Math.log(x) / Math.log(2);
     // y = Math.log(y) / Math.log(2);
 
     // drive the robot
-    d_drive.arcadeDrive(y, x);
+    d_drive.arcadeDrive(driveY, driveX);
 
     // send the drivetrain to shuffleboard
     SmartDashboard.putNumber("Left Master", m_leftMaster.get());
