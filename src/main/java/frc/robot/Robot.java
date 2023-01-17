@@ -6,11 +6,19 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
+import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
+import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PS4Controller;
+
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.REVPhysicsSim;
 
 // import definitions.java
 import frc.robot.Definitions;
@@ -34,7 +42,8 @@ public class Robot extends TimedRobot {
   private final CANSparkMax m_rightSlave = new CANSparkMax(Definitions.m_rightSlave, CANSparkMax.MotorType.kBrushless);
 
   // define the joysticks
-  private final Joystick m_joystick = new Joystick(Definitions.c_joystick);
+  private final Joystick c_joystick = new Joystick(Definitions.c_joystick);
+  private final PS4Controller c_ps4 = new PS4Controller(Definitions.c_ps4);
 
   // define the differential drive
   private final DifferentialDrive d_drive = new DifferentialDrive(m_leftMaster, m_rightMaster);
@@ -48,6 +57,11 @@ public class Robot extends TimedRobot {
   public boolean prevTurnMode = false;
   public boolean turnMode = false;
   public boolean invTurning = false;
+
+  // get the roboeio's internal accelerometer
+  Accelerometer internalAccel = new BuiltInAccelerometer();
+
+      
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -126,18 +140,35 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
+    // get the internal accelerometer values
+    double accelX = internalAccel.getX();
+    double accelY = internalAccel.getY();
+    double accelZ = internalAccel.getZ();
+    
     // get the joystick values in separate variables
-    double driveX = -m_joystick.getX();
-    double driveY = -m_joystick.getY();
+    double driveX = -c_joystick.getX();
+    double driveY = -c_joystick.getY();
+
+    double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
+
+
+    driveX = -c_ps4.getLeftX();
+    driveY = -c_ps4.getLeftY();
+    axis3 = 1;
+
+    // use logaritmic scaling for the joystick values
+    // driveX = Math.copySign(Math.pow(driveX, 2), driveX);
+    // driveY = Math.copySign(Math.pow(driveY, 2), driveY);
+
 
     // round the joystick values to 2 decimal places
     driveX = Math.round(driveX * 100.0) / 100.0;
     driveY = Math.round(driveY * 100.0) / 100.0;
 
     // get the value of the trigger
-    trigger = m_joystick.getRawButton(1);
-    pushToStop = m_joystick.getRawButton(2);
-    turnMode = m_joystick.getRawButton(12);
+    trigger = c_joystick.getRawButton(1);
+    pushToStop = c_joystick.getRawButton(2);
+    turnMode = c_joystick.getRawButton(12);
 
     if (trigger == true && prevTrigger == false) {
       estop = !estop;
@@ -161,11 +192,6 @@ public class Robot extends TimedRobot {
     
 
     // get the value of axis 3
-    double axis3 = (-m_joystick.getRawAxis(3)+1)/2;
-
-    // drive the values between -1 and 1 logarithmically
-    // x = Math.log(x) / Math.log(2);
-    // y = Math.log(y) / Math.log(2);
 
     if (driveY < -0.1 && driveY > 0.1) {
       driveY = driveY * 0.2;
@@ -190,8 +216,8 @@ public class Robot extends TimedRobot {
     // SmartDashboard.updateValues();
 
     // get the value of the trigger (button 1)
-    prevTrigger = m_joystick.getRawButton(1);
-    prevTurnMode = m_joystick.getRawButton(12);
+    prevTrigger = c_joystick.getRawButton(1);
+    prevTurnMode = c_joystick.getRawButton(12);
 
   }
 
@@ -223,7 +249,9 @@ public class Robot extends TimedRobot {
 
   /** This function is called once when test mode is enabled. */
   @Override
-  public void testInit() {}
+  public void testInit() {
+
+  }
 
   /** This function is called periodically during test mode. */
   @Override
