@@ -6,22 +6,18 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
-import edu.wpi.first.wpilibj.interfaces.Accelerometer;
+// import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
-import edu.wpi.first.math.kinematics.DifferentialDriveOdometry;
-import edu.wpi.first.wpilibj.BuiltInAccelerometer;
+// import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.PS4Controller;
+// import edu.wpi.first.wpilibj.PS4Controller;
 
 import com.revrobotics.CANSparkMax;
-import com.revrobotics.REVPhysicsSim;
 
 // import definitions.java
-import frc.robot.Definitions;
+// import frc.robot.Definitions;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -43,7 +39,7 @@ public class Robot extends TimedRobot {
 
   // define the joysticks
   private final Joystick c_joystick = new Joystick(Definitions.c_joystick);
-  private final PS4Controller c_ps4 = new PS4Controller(Definitions.c_ps4);
+  // private final PS4Controller c_ps4 = new PS4Controller(Definitions.c_ps4);
 
   // define the differential drive
   private final DifferentialDrive d_drive = new DifferentialDrive(m_leftMaster, m_rightMaster);
@@ -57,9 +53,13 @@ public class Robot extends TimedRobot {
   public boolean prevTurnMode = false;
   public boolean turnMode = false;
   public boolean invTurning = false;
+  public boolean turning = false;
+  public boolean turnLeft = false;
+  public boolean turnRight = false;
+  public boolean throttleLever0 = false;
 
   // get the roboeio's internal accelerometer
-  Accelerometer internalAccel = new BuiltInAccelerometer();
+  // Accelerometer internalAccel = new BuiltInAccelerometer();
 
       
 
@@ -141,10 +141,169 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     // get the internal accelerometer values
-    double accelX = internalAccel.getX();
-    double accelY = internalAccel.getY();
-    double accelZ = internalAccel.getZ();
+    // double accelX = internalAccel.getX();
+    // double accelY = internalAccel.getY();
+    // double accelZ = internalAccel.getZ();
+
+    // get the joystick values in separate variables
+    double driveX = -c_joystick.getX();
+    double driveY = -c_joystick.getY();
+
+    // ignore if the joystick is within the deadzone
+    if (Math.abs(driveX) < Definitions.c_joystick_deadzone) {
+      driveX = 0;
+    }
+    if (Math.abs(driveY) < Definitions.c_joystick_deadzone) {
+      driveY = 0;
+    }
+
+    double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
+
+    if (axis3 <= 0.1) {
+      throttleLever0 = true;
+    } else {
+      throttleLever0 = false;
+    }
+
+
+    // driveX = -c_ps4.getLeftX();
+    // driveY = -c_ps4.getLeftY();
+    // axis3 = 1;
+
+    // use logaritmic scaling for the joystick values
+    // driveX = Math.copySign(Math.pow(driveX, 2), driveX);
+    // driveY = Math.copySign(Math.pow(driveY, 2), driveY);
+
+
+    // round the joystick values to 2 decimal places
+    driveX = Math.round(driveX * 100.0) / 100.0;
+    driveY = Math.round(driveY * 100.0) / 100.0;
+
+    if (driveX != 0 && estop == false) {
+      turning = true;
+      if (driveX > 0) {
+        turnLeft = true;
+        turnRight = false;
+      } else if (driveX < 0) {
+        turnLeft = false;
+        turnRight = true;
+      }
+    } else {
+      turning = false;
+      turnLeft = false;
+      turnRight = false;
+    }
+
+    // get the value of the trigger
+    trigger = c_joystick.getRawButton(1);
+    pushToStop = c_joystick.getRawButton(2);
+    turnMode = c_joystick.getRawButton(12);
+
+    if (trigger == true && prevTrigger == false && keepStopped == true && pushToStop == true) {
+      estop = false;
+      keepStopped = false;
+    } else if (trigger == true && prevTrigger == false && pushToStop == true) {
+      estop = true;
+      keepStopped = true;
+    } else if (trigger == true && prevTrigger == false) {
+      estop = !estop;
+      keepStopped = !keepStopped;
+    }
+
+    if (pushToStop == true && keepStopped == false) {
+      estop = true;
+      prevPTS = true;
+    } else if (prevPTS == true && keepStopped == false) {
+      estop = false;
+      prevPTS = false;
+    }
+
+    if (turnMode == true && prevTurnMode == false) {
+      invTurning = !invTurning;
+    }
+
+    // send estop to shuffleboard
+    // update estop on shuffleboard
     
+
+    // get the value of axis 3
+
+    if (driveY < -0.1 && driveY > 0.1) {
+      driveY = driveY * 0.2;
+    }
+
+    if (invTurning == true && driveY < 0) {
+      driveX = -driveX;
+    }
+
+    if (estop) {
+      driveX = 0;
+      driveY = 0;
+    }
+
+    // drive the robot
+    d_drive.arcadeDrive(driveY*axis3, driveX*axis3);
+
+    // send data to shuffleboard
+    SmartDashboard.putBoolean("E-Stop", estop);
+
+    SmartDashboard.putBoolean("Invert X on -Y", invTurning);
+
+    SmartDashboard.putData("Drivetrain", d_drive);
+
+    // add the left and right turn booleans to shuffleboard
+    SmartDashboard.putBoolean("Turning", turning);
+    SmartDashboard.putBoolean("Turn Left", turnLeft);
+    SmartDashboard.putBoolean("Turn Right", turnRight);
+
+    SmartDashboard.putBoolean("Throttle lever 0", throttleLever0);
+
+    // SmartDashboard.updateValues();
+
+    // get the value of the trigger (button 1)
+    prevTrigger = c_joystick.getRawButton(1);
+    prevTurnMode = c_joystick.getRawButton(12);
+
+  }
+
+  /** This function is called once when the robot is disabled. */
+  @Override
+  public void disabledInit() {
+    // send 0 to the motors
+    d_drive.arcadeDrive(0, 0);
+    estop = false;
+    keepStopped = false;
+    prevPTS = false;
+    pushToStop = false;
+    trigger = false;
+    prevTrigger = false;
+  }
+
+  /** This function is called periodically when disabled. */
+  @Override
+  public void disabledPeriodic() {
+    // get the speed from the encoders
+    double leftSpeed = m_leftMaster.getEncoder().getVelocity();
+    double rightSpeed = m_rightMaster.getEncoder().getVelocity();
+
+    // if the speed is greater than 0.1 for either motor send an alert to driver station
+    if (leftSpeed > 0.1 || rightSpeed > 0.1) {
+      DriverStation.reportError("Motors are still moving!", false);
+    }
+  }
+
+  /** This function is called once when test mode is enabled. */
+  @Override
+  public void testInit() {}
+
+  /** This function is called periodically during test mode. */
+  @Override
+  public void testPeriodic() {
+    // get the internal accelerometer values
+    // double accelX = internalAccel.getX();
+    // double accelY = internalAccel.getY();
+    // double accelZ = internalAccel.getZ();
+
     // get the joystick values in separate variables
     double driveX = -c_joystick.getX();
     double driveY = -c_joystick.getY();
@@ -152,11 +311,11 @@ public class Robot extends TimedRobot {
     double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
 
 
-    driveX = -c_ps4.getLeftX();
-    driveY = -c_ps4.getLeftY();
-    axis3 = 1;
+    // driveX = -c_ps4.getLeftX();
+    // driveY = -c_ps4.getLeftY();
+    // axis3 = 1;
 
-    // use logaritmic scaling for the joystick values
+      // use logaritmic scaling for the joystick values
     // driveX = Math.copySign(Math.pow(driveX, 2), driveX);
     // driveY = Math.copySign(Math.pow(driveY, 2), driveY);
 
@@ -205,6 +364,10 @@ public class Robot extends TimedRobot {
       driveY = 0;
     }
 
+    // lower the output of the joystick to prevent the robot from putting out too much torque
+    driveX *= 0.7;
+    driveY *= 0.7;
+
     // drive the robot
     d_drive.arcadeDrive(driveY*axis3, driveX*axis3);
 
@@ -218,44 +381,7 @@ public class Robot extends TimedRobot {
     // get the value of the trigger (button 1)
     prevTrigger = c_joystick.getRawButton(1);
     prevTurnMode = c_joystick.getRawButton(12);
-
   }
-
-  /** This function is called once when the robot is disabled. */
-  @Override
-  public void disabledInit() {
-    // send 0 to the motors
-    d_drive.arcadeDrive(0, 0);
-    estop = false;
-    keepStopped = false;
-    prevPTS = false;
-    pushToStop = false;
-    trigger = false;
-    prevTrigger = false;
-  }
-
-  /** This function is called periodically when disabled. */
-  @Override
-  public void disabledPeriodic() {
-    // get the speed from the encoders
-    double leftSpeed = m_leftMaster.getEncoder().getVelocity();
-    double rightSpeed = m_rightMaster.getEncoder().getVelocity();
-
-    // if the speed is greater than 0.1 for either motor send an alert to driver station
-    if (leftSpeed > 0.1 || rightSpeed > 0.1) {
-      DriverStation.reportError("Motors are still moving!", false);
-    }
-  }
-
-  /** This function is called once when test mode is enabled. */
-  @Override
-  public void testInit() {
-
-  }
-
-  /** This function is called periodically during test mode. */
-  @Override
-  public void testPeriodic() {}
 
   /** This function is called once when the robot is first started up. */
   @Override

@@ -8,5 +8,7 @@ public class Definitions {
     public static int m_rightSlave = 4;
 
     public static int c_joystick = 0;
-    
+    public static int c_ps4 = 1;
+
+    public static double c_joystick_deadzone = 0.1;
 }
