@@ -16,7 +16,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
 // import edu.wpi.first.wpilibj.PS4Controller;
 
-import java.sql.Driver;
+// import java.sql.Driver;
 
 import com.revrobotics.CANSparkMax;
 
@@ -147,6 +147,7 @@ public class Robot extends TimedRobot {
     // trigger = false;
     prevTrigger = false;
     // pushToStop = false;
+    impact = false;
     
 
     // send the status of invTurning to the driver station
@@ -175,7 +176,7 @@ public class Robot extends TimedRobot {
       DriverStation.reportWarning("leftPower: " + leftPower, false);
       DriverStation.reportWarning("rightPower: " + rightPower, false);
       estop = impact = true;
-    } else if (leftPower < 5 && rightPower < 5 && driveY == 0)    { estop = impact = false; }
+    } else if (leftPower < 5 && rightPower < 5 && driveY == 0 && impact == true)    { estop = impact = false; }
 
     lastDriveY = driveY;
 
