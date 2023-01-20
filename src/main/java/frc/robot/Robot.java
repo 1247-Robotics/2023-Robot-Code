@@ -73,6 +73,19 @@ public class Robot extends TimedRobot {
 
   public boolean impact = false;
 
+  public int cycle = 0;
+  public int lastCycle = 0;
+
+  public int watch = 0;
+
+  public double leftPower = m_leftMaster.getOutputCurrent();
+  public double rightPower = m_rightMaster.getOutputCurrent();
+
+  public double driveX = -c_joystick.getX();
+  public double driveY = -c_joystick.getY();
+  public double driveZ = -c_joystick.getZ();
+  public double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
+
       
 
   /**
@@ -94,6 +107,32 @@ public class Robot extends TimedRobot {
     m_leftMaster.setInverted(false);
 
     CameraServer.startAutomaticCapture();
+
+    // shuffleboard additions
+
+    // motor power
+    SmartDashboard.putNumber("Left Power", leftPower);
+    SmartDashboard.putNumber("Right Power", rightPower);
+
+    // estop indicator
+    SmartDashboard.putBoolean("E-Stop", estop);
+
+    // joystick inversion
+    SmartDashboard.putBoolean("Invert X on -Y", invTurning);
+
+    // drivetrain diagram
+    SmartDashboard.putData("Drivetrain", d_drive);
+
+    // turning indicators
+    SmartDashboard.putBoolean("Turning", turning);
+    SmartDashboard.putBoolean("Turn Left", turnLeft);
+    SmartDashboard.putBoolean("Turn Right", turnRight);
+
+    // low throttle multiplier indicator
+    SmartDashboard.putBoolean("Throttle lever 0", throttleLever0);
+
+    // impact indicator
+    SmartDashboard.putBoolean("Impact", impact);
     
   }
 
@@ -105,7 +144,16 @@ public class Robot extends TimedRobot {
    * SmartDashboard integrated updating.
    */
   @Override
-  public void robotPeriodic() {}
+  public void robotPeriodic() {
+    leftPower = m_leftMaster.getOutputCurrent();
+    rightPower = m_rightMaster.getOutputCurrent();
+
+    driveX = -c_joystick.getX();
+    driveY = -c_joystick.getY();
+    driveZ = -c_joystick.getZ();
+    axis3 = (-c_joystick.getRawAxis(3)+1)/2;
+
+  }
 
   /**
    * This autonomous (along with the chooser code above) shows how to select between different
@@ -149,6 +197,7 @@ public class Robot extends TimedRobot {
     // pushToStop = false;
     impact = false;
     
+    
 
     // send the status of invTurning to the driver station
     DriverStation.reportWarning("invTurning: " + invTurning, false);
@@ -157,26 +206,14 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    // get the joystick analogue values
-    double driveX = -c_joystick.getX();
-    double driveY = -c_joystick.getY();
-    double driveZ = -c_joystick.getZ();
-    double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
-
-    // get the current power usage of the master motors
-    double leftPower = m_leftMaster.getOutputCurrent();
-    double rightPower = m_rightMaster.getOutputCurrent();
 
     // get the absolute value of the difference between the last driveY and the current driveY
-    double driveYDiff = Math.abs(lastDriveY - driveY);
+    double driveYDiff = lastDriveY - driveY;
 
-    // if the power usage of the master motors suddely increases without a change in throttle, stop the robot
-    // else if the motors are stopped and the throttle is zeroed, disengage the estop
-    if (leftPower > 40 && rightPower > 40 && driveYDiff < 0.05 && driveY != 0) {
-      DriverStation.reportWarning("leftPower: " + leftPower, false);
-      DriverStation.reportWarning("rightPower: " + rightPower, false);
-      estop = impact = true;
-    } else if (leftPower < 5 && rightPower < 5 && driveY == 0 && impact == true)    { estop = impact = false; }
+    // DriverStation.reportWarning("leftPower: " + leftPower, false);
+    // DriverStation.reportWarning("rightPower: " + rightPower, false);
+
+    if (driveYDiff > 0.05)    { lastCycle = cycle; }
 
     lastDriveY = driveY;
 
@@ -185,6 +222,7 @@ public class Robot extends TimedRobot {
     // deadzone the joystick values
     if (Math.abs(driveX) < Definitions.c_joystick_deadzone)   { driveX = 0; }
     if (Math.abs(driveY) < Definitions.c_joystick_deadzone)   { driveY = 0; }
+    if (driveZ > -0.33 && driveZ < 0.02)    { driveZ = 0; }
 
     if (axis3 <= 0.12)    { throttleLever0 = true; }
     else    { throttleLever0 = false; }
@@ -238,33 +276,7 @@ public class Robot extends TimedRobot {
    
 
     
-    // shuffleboard additions
-
-    // motor power
-    SmartDashboard.putNumber("Left Power", leftPower);
-    SmartDashboard.putNumber("Right Power", rightPower);
-
-    // estop indicator
-    SmartDashboard.putBoolean("E-Stop", estop);
-
-    // joystick inversion
-    SmartDashboard.putBoolean("Invert X on -Y", invTurning);
-
-    // drivetrain diagram
-    SmartDashboard.putData("Drivetrain", d_drive);
-
-    // turning indicators
-    SmartDashboard.putBoolean("Turning", turning);
-    SmartDashboard.putBoolean("Turn Left", turnLeft);
-    SmartDashboard.putBoolean("Turn Right", turnRight);
-
-    // low throttle multiplier indicator
-    SmartDashboard.putBoolean("Throttle lever 0", throttleLever0);
-
-    // impact indicator
-    SmartDashboard.putBoolean("Impact", impact);
-
-    // put the camera
+    
 
 
 
@@ -273,6 +285,7 @@ public class Robot extends TimedRobot {
     prevTurnMode = c_joystick.getRawButton(12);
     lastAccelY = internalAccel.getY();
 
+    cycle += 1;
   }
 
   /** This function is called once when the robot is disabled. */
