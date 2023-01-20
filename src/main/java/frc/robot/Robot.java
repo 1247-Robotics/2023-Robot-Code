@@ -156,15 +156,11 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    // get the internal accelerometer values
-    // double accelX = internalAccel.getX();
-    double accelY = internalAccel.getY();
-    // double accelZ = internalAccel.getZ();
-
-    // get the joystick values in separate variables
+    // get the joystick analogue values
     double driveX = -c_joystick.getX();
     double driveY = -c_joystick.getY();
     double driveZ = -c_joystick.getZ();
+    double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
 
     // get the current power usage of the master motors
     double leftPower = m_leftMaster.getOutputCurrent();
@@ -172,66 +168,31 @@ public class Robot extends TimedRobot {
 
     // get the absolute value of the difference between the last driveY and the current driveY
     double driveYDiff = Math.abs(lastDriveY - driveY);
-    // double accelYDiff = Math.abs(lastAccelY - accelY);
-
-    
-    // if (driveYDiff < 0.05 && accelYDiff > 0.3 && driveY != 0) {
-    //   DriverStation.reportWarning("driveYDiff: " + driveYDiff, false);
-    //   DriverStation.reportWarning("accelYDiff: " + accelYDiff, false);
-    //   estop = true;
-    //   collide = true;
-    // }
 
     // if the power usage of the master motors suddely increases without a change in throttle, stop the robot
     // else if the motors are stopped and the throttle is zeroed, disengage the estop
     if (leftPower > 40 && rightPower > 40 && driveYDiff < 0.05 && driveY != 0) {
       DriverStation.reportWarning("leftPower: " + leftPower, false);
       DriverStation.reportWarning("rightPower: " + rightPower, false);
-      estop = true;
-      impact = true;
-    } else if (leftPower < 5 && rightPower < 5 && driveY == 0) {
-      estop = false;
-      impact = false;
-    }
+      estop = impact = true;
+    } else if (leftPower < 5 && rightPower < 5 && driveY == 0)    { estop = impact = false; }
 
     lastDriveY = driveY;
 
-    if (driveX < 0.2 && driveX > -0.2 && driveZ != 0) {
-      driveX = driveX+(driveZ*0.4);
-    }
+    if (driveX < 0.2 && driveX > -0.2 && driveZ != 0)   { driveX = driveX+(driveZ*0.4); }
 
-    // ignore if the joystick is within the deadzone
-    if (Math.abs(driveX) < Definitions.c_joystick_deadzone) {
-      driveX = 0;
-    }
-    if (Math.abs(driveY) < Definitions.c_joystick_deadzone) {
-      driveY = 0;
-    }
+    // deadzone the joystick values
+    if (Math.abs(driveX) < Definitions.c_joystick_deadzone)   { driveX = 0; }
+    if (Math.abs(driveY) < Definitions.c_joystick_deadzone)   { driveY = 0; }
 
-    double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
-
-    if (axis3 <= 0.12) {
-      throttleLever0 = true;
-    } else {
-      throttleLever0 = false;
-    }
-
-
-    // driveX = -c_ps4.getLeftX();
-    // driveY = -c_ps4.getLeftY();
-    // axis3 = 1;
-
-    // use logaritmic scaling for the joystick values
-    // driveX = Math.copySign(Math.pow(driveX, 2), driveX);
-    // driveY = Math.copySign(Math.pow(driveY, 2), driveY);
-
+    if (axis3 <= 0.12)    { throttleLever0 = true; }
+    else    { throttleLever0 = false; }
 
     // round the joystick values to 2 decimal places
     driveX = Math.round(driveX * 100.0) / 100.0;
     driveY = Math.round(driveY * 100.0) / 100.0;
 
-    if (driveX != 0 && estop == false) {
-      turning = true;
+    if (driveX != 0 && estop == false) { turning = true;
       if (driveX > 0) {
         turnLeft = true;
         turnRight = false;
@@ -245,82 +206,71 @@ public class Robot extends TimedRobot {
       turnRight = false;
     }
 
-    // get the value of the trigger
+    // get the value of the buttons
     trigger = c_joystick.getRawButton(1);
     pushToStop = c_joystick.getRawButton(2);
     turnMode = c_joystick.getRawButton(12);
 
-    if (trigger == true && prevTrigger == false && keepStopped == true && pushToStop == true && impact == false) {
-      estop = false;
-      keepStopped = false;
-    } else if (trigger == true && prevTrigger == false && pushToStop == true && impact == false) {
-      estop = true;
-      keepStopped = true;
-    } else if (trigger == true && prevTrigger == false && impact == false) {
+    // toggleable estop
+    if (trigger == true && prevTrigger == false && keepStopped == true && pushToStop == true && impact == false)    { estop = keepStopped = false; }
+    else if (trigger == true && prevTrigger == false && pushToStop == true && impact == false)    { estop = keepStopped = true; }
+    else if (trigger == true && prevTrigger == false && impact == false) {
       estop = !estop;
       keepStopped = !keepStopped;
     }
 
-    if (pushToStop == true && keepStopped == false && impact == false) {
-      estop = true;
-      prevPTS = true;
-    } else if (prevPTS == true && keepStopped == false && impact == false) {
-      estop = false;
-      prevPTS = false;
-    }
+    // push to stop
+    if (pushToStop == true && keepStopped == false && impact == false) { estop = prevPTS = true; }
+    else if (prevPTS == true && keepStopped == false && impact == false) { estop = prevPTS = false; }
 
-    if (turnMode == true && prevTurnMode == false) {
-      invTurning = !invTurning;
-    }
+    if (turnMode == true && prevTurnMode == false) { invTurning = !invTurning; }
 
-    // send estop to shuffleboard
-    // update estop on shuffleboard
+    // if (driveY < -0.1 && driveY > 0.1) { driveY = driveY * 0.2; }
     
+    // if turning is set to invert, invert the driveX value when the driveY value is less than 0
+    if (invTurning == true && driveY < 0) { driveX = -driveX; }
 
-    // get the value of axis 3
-
-    if (driveY < -0.1 && driveY > 0.1) {
-      driveY = driveY * 0.2;
-    }
-
-    if (invTurning == true && driveY < 0) {
-      driveX = -driveX;
-    }
-
-    if (estop) {
-      driveX = 0;
-      driveY = 0;
-    }
+    if (estop) { driveX = 0; driveY = 0; }
 
     // drive the robot
     d_drive.arcadeDrive(driveY*axis3, driveX*axis3);
-
-    lastAccelY = internalAccel.getY();
-    
+   
 
     
+    // shuffleboard additions
 
-    // send data to shuffleboard
+    // motor power
+    SmartDashboard.putNumber("Left Power", leftPower);
+    SmartDashboard.putNumber("Right Power", rightPower);
+
+    // estop indicator
     SmartDashboard.putBoolean("E-Stop", estop);
 
+    // joystick inversion
     SmartDashboard.putBoolean("Invert X on -Y", invTurning);
 
+    // drivetrain diagram
     SmartDashboard.putData("Drivetrain", d_drive);
 
-    // add the left and right turn booleans to shuffleboard
+    // turning indicators
     SmartDashboard.putBoolean("Turning", turning);
     SmartDashboard.putBoolean("Turn Left", turnLeft);
     SmartDashboard.putBoolean("Turn Right", turnRight);
 
+    // low throttle multiplier indicator
     SmartDashboard.putBoolean("Throttle lever 0", throttleLever0);
 
+    // impact indicator
+    SmartDashboard.putBoolean("Impact", impact);
+
+    // put the camera
 
 
-    // SmartDashboard.updateValues();
 
-    // get the value of the trigger (button 1)
+    // record the values for comparison with latest values next run
     prevTrigger = c_joystick.getRawButton(1);
     prevTurnMode = c_joystick.getRawButton(12);
+    lastAccelY = internalAccel.getY();
 
   }
 
