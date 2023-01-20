@@ -6,15 +6,21 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 // import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 // import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
 // import edu.wpi.first.wpilibj.PS4Controller;
 
+import java.sql.Driver;
+
 import com.revrobotics.CANSparkMax;
+
+import edu.wpi.first.cameraserver.CameraServer;
 
 // import definitions.java
 // import frc.robot.Definitions;
@@ -57,9 +63,15 @@ public class Robot extends TimedRobot {
   public boolean turnLeft = false;
   public boolean turnRight = false;
   public boolean throttleLever0 = false;
+  public boolean kill = false;
 
   // get the roboeio's internal accelerometer
-  // Accelerometer internalAccel = new BuiltInAccelerometer();
+  Accelerometer internalAccel = new BuiltInAccelerometer();
+
+  public double lastAccelY = 0;
+  public double lastDriveY = 0;
+
+  public boolean impact = false;
 
       
 
@@ -80,6 +92,9 @@ public class Robot extends TimedRobot {
     // set the right motors to invert
     m_rightMaster.setInverted(true);
     m_leftMaster.setInverted(false);
+
+    CameraServer.startAutomaticCapture();
+    
   }
 
   /**
@@ -132,6 +147,7 @@ public class Robot extends TimedRobot {
     // trigger = false;
     prevTrigger = false;
     // pushToStop = false;
+    
 
     // send the status of invTurning to the driver station
     DriverStation.reportWarning("invTurning: " + invTurning, false);
@@ -142,12 +158,48 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     // get the internal accelerometer values
     // double accelX = internalAccel.getX();
-    // double accelY = internalAccel.getY();
+    double accelY = internalAccel.getY();
     // double accelZ = internalAccel.getZ();
 
     // get the joystick values in separate variables
     double driveX = -c_joystick.getX();
     double driveY = -c_joystick.getY();
+    double driveZ = -c_joystick.getZ();
+
+    // get the current power usage of the master motors
+    double leftPower = m_leftMaster.getOutputCurrent();
+    double rightPower = m_rightMaster.getOutputCurrent();
+
+    // get the absolute value of the difference between the last driveY and the current driveY
+    double driveYDiff = Math.abs(lastDriveY - driveY);
+    // double accelYDiff = Math.abs(lastAccelY - accelY);
+
+    
+    // if (driveYDiff < 0.05 && accelYDiff > 0.3 && driveY != 0) {
+    //   DriverStation.reportWarning("driveYDiff: " + driveYDiff, false);
+    //   DriverStation.reportWarning("accelYDiff: " + accelYDiff, false);
+    //   estop = true;
+    //   collide = true;
+    // }
+
+    // if the power usage of the master motors suddely increases without a change in throttle, stop the robot
+    // else if the motors are stopped and the throttle is zeroed, disengage the estop
+    i
+    f (leftPower > 40 && rightPower > 40 && driveYDiff < 0.05 && driveY != 0) {
+      DriverStation.reportWarning("leftPower: " + leftPower, false);
+      DriverStation.reportWarning("rightPower: " + rightPower, false);
+      estop = true;
+      impact = true;
+    } else if (leftPower < 5 && rightPower < 5 && driveY == 0) {
+      estop = false;
+      impact = false;
+    }
+
+    lastDriveY = driveY;
+
+    if (driveX < 0.2 && driveX > -0.2 && driveZ != 0) {
+      driveX = driveX+(driveZ*0.4);
+    }
 
     // ignore if the joystick is within the deadzone
     if (Math.abs(driveX) < Definitions.c_joystick_deadzone) {
@@ -159,7 +211,7 @@ public class Robot extends TimedRobot {
 
     double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
 
-    if (axis3 <= 0.1) {
+    if (axis3 <= 0.12) {
       throttleLever0 = true;
     } else {
       throttleLever0 = false;
@@ -199,21 +251,21 @@ public class Robot extends TimedRobot {
     pushToStop = c_joystick.getRawButton(2);
     turnMode = c_joystick.getRawButton(12);
 
-    if (trigger == true && prevTrigger == false && keepStopped == true && pushToStop == true) {
+    if (trigger == true && prevTrigger == false && keepStopped == true && pushToStop == true && impact == false) {
       estop = false;
       keepStopped = false;
-    } else if (trigger == true && prevTrigger == false && pushToStop == true) {
+    } else if (trigger == true && prevTrigger == false && pushToStop == true && impact == false) {
       estop = true;
       keepStopped = true;
-    } else if (trigger == true && prevTrigger == false) {
+    } else if (trigger == true && prevTrigger == false && impact == false) {
       estop = !estop;
       keepStopped = !keepStopped;
     }
 
-    if (pushToStop == true && keepStopped == false) {
+    if (pushToStop == true && keepStopped == false && impact == false) {
       estop = true;
       prevPTS = true;
-    } else if (prevPTS == true && keepStopped == false) {
+    } else if (prevPTS == true && keepStopped == false && impact == false) {
       estop = false;
       prevPTS = false;
     }
@@ -244,6 +296,11 @@ public class Robot extends TimedRobot {
     // drive the robot
     d_drive.arcadeDrive(driveY*axis3, driveX*axis3);
 
+    lastAccelY = internalAccel.getY();
+    
+
+    
+
     // send data to shuffleboard
     SmartDashboard.putBoolean("E-Stop", estop);
 
@@ -257,6 +314,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putBoolean("Turn Right", turnRight);
 
     SmartDashboard.putBoolean("Throttle lever 0", throttleLever0);
+
+
 
     // SmartDashboard.updateValues();
 
@@ -303,6 +362,8 @@ public class Robot extends TimedRobot {
     // double accelX = internalAccel.getX();
     // double accelY = internalAccel.getY();
     // double accelZ = internalAccel.getZ();
+    // if any of the accel values exceeds 0.1 set kill to true
+    // if (accelX >= 0.1 )
 
     // get the joystick values in separate variables
     double driveX = -c_joystick.getX();
