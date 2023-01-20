@@ -184,8 +184,7 @@ public class Robot extends TimedRobot {
 
     // if the power usage of the master motors suddely increases without a change in throttle, stop the robot
     // else if the motors are stopped and the throttle is zeroed, disengage the estop
-    i
-    f (leftPower > 40 && rightPower > 40 && driveYDiff < 0.05 && driveY != 0) {
+    if (leftPower > 40 && rightPower > 40 && driveYDiff < 0.05 && driveY != 0) {
       DriverStation.reportWarning("leftPower: " + leftPower, false);
       DriverStation.reportWarning("rightPower: " + rightPower, false);
       estop = true;
