@@ -5,6 +5,7 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.interfaces.Accelerometer;
 // import edu.wpi.first.wpilibj.interfaces.Accelerometer;
@@ -19,6 +20,7 @@ import edu.wpi.first.wpilibj.Joystick;
 // import java.sql.Driver;
 
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.CANSparkMax.IdleMode;
 
 import edu.wpi.first.cameraserver.CameraServer;
 
@@ -33,7 +35,7 @@ import edu.wpi.first.cameraserver.CameraServer;
  */
 public class Robot extends TimedRobot {
   private static final String kDefaultAuto = "Default";
-  private static final String kCustomAuto = "My Auto";
+  private static final String kCustomAuto = "Run motors (stop if movement)";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
@@ -48,7 +50,7 @@ public class Robot extends TimedRobot {
   // private final PS4Controller c_ps4 = new PS4Controller(Definitions.c_ps4);
 
   // define the differential drive
-  private final DifferentialDrive d_drive = new DifferentialDrive(m_leftMaster, m_rightMaster);
+  public final DifferentialDrive d_drive = new DifferentialDrive(m_leftMaster, m_rightMaster);
 
   public boolean prevTrigger = false;
   public boolean trigger = false;
@@ -86,7 +88,17 @@ public class Robot extends TimedRobot {
   public double driveZ = -c_joystick.getZ();
   public double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
 
-      
+  public double accelX = 0;
+  public double accelY = 0;
+  public double accelZ = 0;
+
+  public int loop = 0;
+  public boolean loopToggle = false;
+  public boolean move = false;
+
+  public boolean prev10 = false;
+
+  
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -95,7 +107,7 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
-    m_chooser.addOption("My Auto", kCustomAuto);
+    m_chooser.addOption("Run motors (stop if movement)", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
 
     // set the slave motors to follow the master motors
@@ -108,31 +120,17 @@ public class Robot extends TimedRobot {
 
     CameraServer.startAutomaticCapture();
 
-    // shuffleboard additions
+    // create a second camera for a backup camera
 
-    // motor power
-    SmartDashboard.putNumber("Left Power", leftPower);
-    SmartDashboard.putNumber("Right Power", rightPower);
+    m_leftMaster.setIdleMode(CANSparkMax.IdleMode.kBrake);
+    m_rightMaster.setIdleMode(CANSparkMax.IdleMode.kBrake);
+    m_rightSlave.setIdleMode(CANSparkMax.IdleMode.kBrake);
+    m_leftSlave.setIdleMode(CANSparkMax.IdleMode.kBrake);
+    // display the mode on the smart dashboard
+    SmartDashboard.putString("Motor Mode", "Brake");
+    // CameraServer.
 
-    // estop indicator
-    SmartDashboard.putBoolean("E-Stop", estop);
 
-    // joystick inversion
-    SmartDashboard.putBoolean("Invert X on -Y", invTurning);
-
-    // drivetrain diagram
-    SmartDashboard.putData("Drivetrain", d_drive);
-
-    // turning indicators
-    SmartDashboard.putBoolean("Turning", turning);
-    SmartDashboard.putBoolean("Turn Left", turnLeft);
-    SmartDashboard.putBoolean("Turn Right", turnRight);
-
-    // low throttle multiplier indicator
-    SmartDashboard.putBoolean("Throttle lever 0", throttleLever0);
-
-    // impact indicator
-    SmartDashboard.putBoolean("Impact", impact);
     
   }
 
@@ -151,8 +149,82 @@ public class Robot extends TimedRobot {
     driveX = -c_joystick.getX();
     driveY = -c_joystick.getY();
     driveZ = -c_joystick.getZ();
-    axis3 = (-c_joystick.getRawAxis(3)+1)/2;
+    axis3 = (-c_joystick.getRawAxis(3)+2/2);
 
+    trigger = c_joystick.getRawButton(1);
+    pushToStop = c_joystick.getRawButton(2);
+    turnMode = c_joystick.getRawButton(12);
+
+    if (Math.abs(driveX) < Definitions.c_joystick_deadzone)   { driveX = 0; }
+    if (Math.abs(driveY) < Definitions.c_joystick_deadzone)   { driveY = 0; }
+    if (Math.abs(driveZ) < Definitions.c_joystick_deadzone+0.05)   { driveZ = 0; }
+
+    driveZ /= axis3*1.6;
+
+    if (driveX < 0.2 && driveX > -0.2 && driveZ != 0)   { driveX = driveX+(driveZ*0.4); }
+
+    accelX = internalAccel.getX();
+    accelY = internalAccel.getY();
+    accelZ = internalAccel.getZ();
+
+    SmartDashboard.putNumber("Left Power", leftPower);
+    SmartDashboard.putNumber("Right Power", rightPower);
+    SmartDashboard.putBoolean("E-Stop", estop);
+    SmartDashboard.putBoolean("Invert X on -Y", invTurning);
+    SmartDashboard.putData("Drivetrain", d_drive);
+    SmartDashboard.putBoolean("Turning", turning);
+    SmartDashboard.putBoolean("Turn Left", turnLeft);
+    SmartDashboard.putBoolean("Turn Right", turnRight);
+    SmartDashboard.putBoolean("Throttle lever 0", throttleLever0);
+    SmartDashboard.putBoolean("E-Stop", estop);
+    SmartDashboard.putData("Drivetrain", d_drive);
+
+    // a button that when pressed will toggle the motor mode between brake and coast
+    if (c_joystick.getRawButton(10) && !prev10) {
+      if (m_leftMaster.getIdleMode() == CANSparkMax.IdleMode.kBrake) {
+        m_leftMaster.setIdleMode(CANSparkMax.IdleMode.kCoast);
+        m_rightMaster.setIdleMode(CANSparkMax.IdleMode.kCoast);
+        m_rightSlave.setIdleMode(CANSparkMax.IdleMode.kCoast);
+        m_leftSlave.setIdleMode(CANSparkMax.IdleMode.kCoast);
+        SmartDashboard.putString("Motor Mode", "Coast");
+      } else {
+        m_leftMaster.setIdleMode(CANSparkMax.IdleMode.kBrake);
+        m_rightMaster.setIdleMode(CANSparkMax.IdleMode.kBrake);
+        m_rightSlave.setIdleMode(CANSparkMax.IdleMode.kBrake);
+        m_leftSlave.setIdleMode(CANSparkMax.IdleMode.kBrake);
+        SmartDashboard.putString("Motor Mode", "Brake");
+      }
+    }
+
+    prev10 = c_joystick.getRawButton(10);
+
+    if (axis3 <= 0.12)    { throttleLever0 = true; }
+    else    { throttleLever0 = false; }
+
+    if (trigger == true && prevTrigger == false && keepStopped == true && pushToStop == true)    { estop = keepStopped = false; }
+    else if (trigger == true && prevTrigger == false && pushToStop == true)    { estop = keepStopped = true; }
+    else if (trigger == true && prevTrigger == false && impact == false) {
+      estop = !estop;
+      keepStopped = !keepStopped;
+    }
+
+    if (turnMode == true && prevTurnMode == false) { invTurning = !invTurning; }
+
+    if (pushToStop == true && keepStopped == false) { estop = prevPTS = true; }
+    else if (prevPTS == true && keepStopped == false) { estop = prevPTS = false; }
+
+    prevTrigger = c_joystick.getRawButton(1);
+    prevTurnMode = c_joystick.getRawButton(12);
+  }
+
+  public boolean checkMovement() {
+    if (accelX >= 0.1 && accelY >= 0.1 && accelZ >= 0.1/*&& accelX <= -0.01 && accelY <= -0.01 && accelZ <= -0.01*/) {
+      // d_drive.arcadeDrive(0, 0);
+      DriverStation.reportError("Robot moved", false);
+      return true;
+    } else { return false; }
+
+    
   }
 
   /**
@@ -167,6 +239,8 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void autonomousInit() {
+    loop = 0;
+    move = false;
     m_autoSelected = m_chooser.getSelected();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
@@ -177,7 +251,21 @@ public class Robot extends TimedRobot {
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
       case kCustomAuto:
-        // Put custom auto code here
+        if (!move) {
+          move = checkMovement();
+          if (loop >= 15000) { loopToggle = !loopToggle; loop = 0; }
+          if (loopToggle == true) {
+            move = checkMovement();
+            d_drive.arcadeDrive(-1, 0);
+            move = checkMovement();
+          } else {
+            move = checkMovement();
+            d_drive.arcadeDrive(1, 0);
+            move = checkMovement();
+          }
+          loop += 1;
+          
+        } else { d_drive.arcadeDrive(0, 0); }
         break;
       case kDefaultAuto:
       default:
@@ -189,13 +277,6 @@ public class Robot extends TimedRobot {
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
-    estop = false;
-    keepStopped = false;
-    prevPTS = false;
-    // trigger = false;
-    prevTrigger = false;
-    // pushToStop = false;
-    impact = false;
     
     
 
@@ -206,32 +287,9 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-
-    // get the absolute value of the difference between the last driveY and the current driveY
-    double driveYDiff = lastDriveY - driveY;
-
-    // DriverStation.reportWarning("leftPower: " + leftPower, false);
-    // DriverStation.reportWarning("rightPower: " + rightPower, false);
-
-    if (driveYDiff > 0.05)    { lastCycle = cycle; }
-
-    lastDriveY = driveY;
-
-    if (driveX < 0.2 && driveX > -0.2 && driveZ != 0)   { driveX = driveX+(driveZ*0.4); }
-
-    // deadzone the joystick values
-    if (Math.abs(driveX) < Definitions.c_joystick_deadzone)   { driveX = 0; }
-    if (Math.abs(driveY) < Definitions.c_joystick_deadzone)   { driveY = 0; }
-    if (driveZ > -0.33 && driveZ < 0.02)    { driveZ = 0; }
-
-    if (axis3 <= 0.12)    { throttleLever0 = true; }
-    else    { throttleLever0 = false; }
-
-    // round the joystick values to 2 decimal places
-    driveX = Math.round(driveX * 100.0) / 100.0;
-    driveY = Math.round(driveY * 100.0) / 100.0;
-
-    if (driveX != 0 && estop == false) { turning = true;
+    
+    if (driveX != 0 && estop == false) {
+      turning = true;
       if (driveX > 0) {
         turnLeft = true;
         turnRight = false;
@@ -244,48 +302,17 @@ public class Robot extends TimedRobot {
       turnLeft = false;
       turnRight = false;
     }
-
-    // get the value of the buttons
-    trigger = c_joystick.getRawButton(1);
-    pushToStop = c_joystick.getRawButton(2);
-    turnMode = c_joystick.getRawButton(12);
-
-    // toggleable estop
-    if (trigger == true && prevTrigger == false && keepStopped == true && pushToStop == true && impact == false)    { estop = keepStopped = false; }
-    else if (trigger == true && prevTrigger == false && pushToStop == true && impact == false)    { estop = keepStopped = true; }
-    else if (trigger == true && prevTrigger == false && impact == false) {
-      estop = !estop;
-      keepStopped = !keepStopped;
-    }
-
-    // push to stop
-    if (pushToStop == true && keepStopped == false && impact == false) { estop = prevPTS = true; }
-    else if (prevPTS == true && keepStopped == false && impact == false) { estop = prevPTS = false; }
-
-    if (turnMode == true && prevTurnMode == false) { invTurning = !invTurning; }
-
-    // if (driveY < -0.1 && driveY > 0.1) { driveY = driveY * 0.2; }
     
     // if turning is set to invert, invert the driveX value when the driveY value is less than 0
-    if (invTurning == true && driveY < 0) { driveX = -driveX; }
+    if (invTurning) { driveX = -driveX; }
 
     if (estop) { driveX = 0; driveY = 0; }
 
     // drive the robot
     d_drive.arcadeDrive(driveY*axis3, driveX*axis3);
-   
-
-    
-    
-
-
 
     // record the values for comparison with latest values next run
-    prevTrigger = c_joystick.getRawButton(1);
-    prevTurnMode = c_joystick.getRawButton(12);
-    lastAccelY = internalAccel.getY();
-
-    cycle += 1;
+    
   }
 
   /** This function is called once when the robot is disabled. */
@@ -307,6 +334,8 @@ public class Robot extends TimedRobot {
     // get the speed from the encoders
     double leftSpeed = m_leftMaster.getEncoder().getVelocity();
     double rightSpeed = m_rightMaster.getEncoder().getVelocity();
+
+    
 
     // if the speed is greater than 0.1 for either motor send an alert to driver station
     if (leftSpeed > 0.1 || rightSpeed > 0.1) {
@@ -394,13 +423,6 @@ public class Robot extends TimedRobot {
 
     // drive the robot
     d_drive.arcadeDrive(driveY*axis3, driveX*axis3);
-
-    // send data to shuffleboard
-    SmartDashboard.putBoolean("E-Stop", estop);
-
-    SmartDashboard.putData("Drivetrain", d_drive);
-
-    // SmartDashboard.updateValues();
 
     // get the value of the trigger (button 1)
     prevTrigger = c_joystick.getRawButton(1);
