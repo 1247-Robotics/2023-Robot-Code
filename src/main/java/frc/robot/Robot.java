@@ -14,6 +14,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 // import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PS4Controller;
 
 // import com.ctre.phoenix.motorcontrol.DemandType;
 // import com.ctre.phoenix.motorcontrol.TalonSRXControlMode;
@@ -97,12 +98,12 @@ public class Robot extends TimedRobot {
 
   // private final CANSparkMax spinny = new CANSparkMax(Definitions.spinny, CANSparkMax.MotorType.kBrushed);
   // // setup talon srx
-  // private final CANSparkMax uppy = new CANSparkMax(Definitions.uppy, CANSparkMax.MotorType.kBrushless);
+  private final CANSparkMax uppy = new CANSparkMax(Definitions.uppy, CANSparkMax.MotorType.kBrushless);
 
   // define the joysticks
   private final Joystick c_joystick = new Joystick(Definitions.c_joystick);
-  private final Joystick armJoystick = new Joystick(Definitions.armJoystick);
-  // private final PS4Controller c_ps4 = new PS4Controller(Definitions.c_ps4);
+  //private final Joystick armJoystick = new Joystick(Definitions.armJoystick);
+  private final PS4Controller c_ps4 = new PS4Controller(Definitions.c_ps4);
 
   // define the differential drive
   public final DifferentialDrive d_drive = new DifferentialDrive(m_leftMaster, m_rightMaster);
@@ -150,15 +151,20 @@ public class Robot extends TimedRobot {
 
   public boolean prev10 = false;
 
-  public double angle = armJoystick.getZ();
+  //public double angle = armJoystick.getZ();
 
-  public boolean prevClawTrig = armJoystick.getRawButton(1);
+  //public boolean prevClawTrig = armJoystick.getRawButton(1);
 
-  public boolean clawTrig = armJoystick.getRawButton(1);
+  //public boolean clawTrig = armJoystick.getRawButton(1);
 
   public boolean clawClosed = false;
+  public double clawAngleMax = 260;
+  public double clawAngleMin = 10;
+  public double clawAngle = clawAngleMin;
+  public double clawCloseMult = 10;
 
-  private DigitalInput baseLimit;
+
+  //private DigitalInput baseLimit;
   private DigitalInput elevLimitB;
   private DigitalInput elevLimitT;
 
@@ -174,8 +180,8 @@ public class Robot extends TimedRobot {
   // private double elbow;
   // private double wrist;
 
-  // private CANSparkMax elbowMotor = new CANSparkMax(Definitions.armPivot, CANSparkMax.MotorType.kBrushless);
-  // private TalonSRX wristMotor = new TalonSRX(Definitions.clawPivot);
+  private CANSparkMax elbowMotor = new CANSparkMax(Definitions.armPivot, CANSparkMax.MotorType.kBrushless);
+  private CANSparkMax wristMotor = new CANSparkMax(Definitions.clawPivot, CANSparkMax.MotorType.kBrushless);
 
   private int i = 0;
   
@@ -190,7 +196,7 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     
     // define the limiters
-    baseLimit = new DigitalInput(Definitions.baseLimit);
+    //baseLimit = new DigitalInput(Definitions.baseLimit);
     elevLimitB = new DigitalInput(Definitions.elevLimitB);
     elevLimitT = new DigitalInput(Definitions.elevLimitT);
 
@@ -217,8 +223,8 @@ public class Robot extends TimedRobot {
     m_leftSlave.setIdleMode(CANSparkMax.IdleMode.kBrake);
 
     // define the claw servos
-    // servo1 = new Servo(Definitions.clawServo1);
-    // servo2 = new Servo(Definitions.clawServo2);
+    servo1 = new Servo(Definitions.clawServo1);
+    servo2 = new Servo(Definitions.clawServo2);
 
   }
 
@@ -378,6 +384,40 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
+    //------Elevator-----
+    if (!elevLimitT.get() && c_ps4.getL1Button()){
+      uppy.set(.75);
+    } else if(!elevLimitB.get() && c_ps4.getR1Button()){
+      uppy.set(-.5);
+    } else {
+      uppy.set(.1);
+    }
+
+    //-----Elbow-----
+    if (c_ps4.getLeftY() < -.1 && c_ps4.getLeftY() > .1){
+      elbowMotor.set(c_ps4.getLeftY());
+    }
+
+    //-----Wrist----
+    if (c_ps4.getRightY() < -.1 && c_ps4.getRightY() > .1){
+      wristMotor.set(c_ps4.getRightY());
+    }
+
+    //-----Claw-----
+    if (clawAngle < clawAngleMax && c_ps4.getR2Button()){
+      double angleChange = c_ps4.getR2Axis()*clawCloseMult;
+      if ((clawAngle + angleChange) < clawAngleMax){
+        clawAngle += angleChange;
+      } else {
+        clawAngle = clawAngleMax;
+      } 
+      servo1.set(clawAngle);
+      servo2.set(270 - clawAngle);
+    } else if (clawAngle < clawAngleMin && c_ps4.getL2Button()){
+      clawAngle = clawAngleMin;
+      servo1.set(clawAngle);
+      servo2.set(270 - clawAngle);
+    }
 
     // if (armJoystick.getRawButton(2) && !prevSwitchButton) {
     //   if (activeMotors == 0) {
