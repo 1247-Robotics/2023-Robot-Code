@@ -158,9 +158,9 @@ public class Robot extends TimedRobot {
   //public boolean clawTrig = armJoystick.getRawButton(1);
 
   public boolean clawClosed = false;
-  public double clawAngleMax = 260;
-  public double clawAngleMin = 10;
-  public double clawAngle = clawAngleMin;
+  public double clawAngleMax = 180;
+  public double clawAngleMin = 90;
+  public double clawAngle = 0;
   public double clawCloseMult = 10;
 
 
@@ -386,38 +386,44 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     //------Elevator-----
     if (!elevLimitT.get() && c_ps4.getL1Button()){
-      uppy.set(.75);
+      uppy.set(-.25);
     } else if(!elevLimitB.get() && c_ps4.getR1Button()){
-      uppy.set(-.5);
+      uppy.set(.25);
     } else {
-      uppy.set(.1);
+      uppy.set(-.0125);
     }
 
     //-----Elbow-----
-    if (c_ps4.getLeftY() < -.1 && c_ps4.getLeftY() > .1){
-      elbowMotor.set(c_ps4.getLeftY());
+    //System.out.println("Left Y Val: " + c_ps4.getLeftY());
+    if (c_ps4.getLeftY() < -.1){
+      elbowMotor.set(c_ps4.getLeftY()*.25);
+    } else if (c_ps4.getLeftY() > .1){
+      elbowMotor.set(c_ps4.getLeftY()*.125);
+    } else {
+      //elbowMotor.set(-.05);
+      elbowMotor.set(0);
     }
 
     //-----Wrist----
-    if (c_ps4.getRightY() < -.1 && c_ps4.getRightY() > .1){
+    /* 
+    if (c_ps4.getRightY() < -.1 || c_ps4.getRightY() > .1){
       wristMotor.set(c_ps4.getRightY());
+    } else {
+      wristMotor.set(0);
     }
+    */
 
     //-----Claw-----
-    if (clawAngle < clawAngleMax && c_ps4.getR2Button()){
-      double angleChange = c_ps4.getR2Axis()*clawCloseMult;
-      if ((clawAngle + angleChange) < clawAngleMax){
-        clawAngle += angleChange;
-      } else {
-        clawAngle = clawAngleMax;
-      } 
-      servo1.set(clawAngle);
-      servo2.set(270 - clawAngle);
-    } else if (clawAngle < clawAngleMin && c_ps4.getL2Button()){
-      clawAngle = clawAngleMin;
-      servo1.set(clawAngle);
-      servo2.set(270 - clawAngle);
+    
+    //System.out.println("Claw Open Button: " +  c_ps4.getR2Button());
+    if (c_ps4.getR2ButtonPressed()){
+      servo1.setAngle(150);
+      servo2.setAngle(20);
+    } else if (c_ps4.getL2Button()){
+      servo1.setAngle(90);
+      servo2.setAngle(90);
     }
+    
 
     // if (armJoystick.getRawButton(2) && !prevSwitchButton) {
     //   if (activeMotors == 0) {
