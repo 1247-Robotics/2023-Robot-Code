@@ -17,9 +17,10 @@ public class Definitions {
 
     //ps4 Controller
 
-    public static int baseLimit = 4;
+    public static int elbowLimit = 4;
     public static int elevLimitB = 0;
     public static int elevLimitT = 9;
+    
 
     public static int clawServo1 = 9;
     public static int clawServo2 = 7;

@@ -167,6 +167,7 @@ public class Robot extends TimedRobot {
   //private DigitalInput baseLimit;
   private DigitalInput elevLimitB;
   private DigitalInput elevLimitT;
+  private DigitalInput elbowLimit;
 
   // private int elevStatus;
 
@@ -196,7 +197,7 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     
     // define the limiters
-    //baseLimit = new DigitalInput(Definitions.baseLimit);
+    elbowLimit = new DigitalInput(Definitions.elbowLimit);
     elevLimitB = new DigitalInput(Definitions.elevLimitB);
     elevLimitT = new DigitalInput(Definitions.elevLimitT);
 
@@ -288,10 +289,10 @@ public class Robot extends TimedRobot {
     // }
 
     // toggles the turning inversion
-    if (turnMode == true && prevTurnMode == false) { invTurning = !invTurning; }
+    //f (turnMode == true && prevTurnMode == false) { invTurning = !invTurning; }
 
     // stores the current status of the turn mode button
-    prevTurnMode = c_joystick.getRawButton(12);
+    //prevTurnMode = c_joystick.getRawButton(12);
 
     // if (axis3 <= 0.12)    { throttleLever0 = true; }
     // else    { throttleLever0 = false; }
@@ -385,9 +386,10 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     //------Elevator-----
-    if (!elevLimitT.get() && c_ps4.getL1Button()){
+    System.out.println(!elevLimitB.get() +", "+  c_ps4.getL1Button());
+    if (!elevLimitT.get() && c_ps4.getR1Button()){
       uppy.set(-.25);
-    } else if(!elevLimitB.get() && c_ps4.getR1Button()){
+    } else if(!elevLimitB.get() && c_ps4.getL1Button()){
       uppy.set(.25);
     } else {
       uppy.set(-.0125);
@@ -395,12 +397,15 @@ public class Robot extends TimedRobot {
 
     //-----Elbow-----
     //System.out.println("Left Y Val: " + c_ps4.getLeftY());
-    if (c_ps4.getLeftY() < -.1){
+    System.out.println(elbowLimit.get());
+    if (!elbowLimit.get() && c_ps4.getLeftY() < -.1){
       elbowMotor.set(c_ps4.getLeftY()*.25);
     } else if (c_ps4.getLeftY() > .1){
       elbowMotor.set(c_ps4.getLeftY()*.125);
+    } else if (!elbowLimit.get()) {
+      elbowMotor.set(-.05);
+      //elbowMotor.set(0);
     } else {
-      //elbowMotor.set(-.05);
       elbowMotor.set(0);
     }
 
@@ -416,10 +421,10 @@ public class Robot extends TimedRobot {
     //-----Claw-----
     
     //System.out.println("Claw Open Button: " +  c_ps4.getR2Button());
-    if (c_ps4.getR2ButtonPressed()){
+    if (c_ps4.getL2ButtonPressed()){
       servo1.setAngle(150);
       servo2.setAngle(20);
-    } else if (c_ps4.getL2Button()){
+    } else if (c_ps4.getR2Button()){
       servo1.setAngle(90);
       servo2.setAngle(90);
     }
