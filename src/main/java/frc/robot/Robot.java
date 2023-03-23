@@ -410,13 +410,15 @@ public class Robot extends TimedRobot {
     }
 
     //-----Wrist----
-    /* 
+    
     if (c_ps4.getRightY() < -.1 || c_ps4.getRightY() > .1){
-      wristMotor.set(c_ps4.getRightY());
+      wristMotor.set(c_ps4.getRightY()*.15);
     } else {
-      wristMotor.set(0);
+      wristMotor.set(-.03);
     }
-    */
+    
+
+
 
     //-----Claw-----
     
