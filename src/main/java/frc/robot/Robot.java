@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PS4Controller;
 
+import com.revrobotics.CANEncoder;
 // import com.ctre.phoenix.motorcontrol.DemandType;
 // import com.ctre.phoenix.motorcontrol.TalonSRXControlMode;
 // import edu.wpi.first.wpilibj.PS4Controller;
@@ -23,6 +24,7 @@ import edu.wpi.first.wpilibj.PS4Controller;
 // import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 // import java.sql.Driver;
 import com.revrobotics.CANSparkMax;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 
 // import com.revrobotics.CANSparkMax.IdleMode;
@@ -30,9 +32,12 @@ import com.revrobotics.CANSparkMax.IdleMode;
 // import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.I2C;
 import edu.wpi.first.wpilibj.Servo;
-// import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
-// import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.DigitalInput;
+
+
+// import edu.wpi.first.wpilibj.controller.PIDController;
+// import edu.wpi.first.wpilibj.controller.PIDSourceType;
 
 
 
@@ -47,6 +52,15 @@ public class Robot extends TimedRobot {
   public class startCompetition {}
 
   public class SensorConstants {
+    public static final int HMC5883L_ADDRESS = 0x1E; // idfk what this is for
+    public static final int HMC5883L_CONFIG_REG_A = 0x00;
+    public static final int HMC5883L_CONFIG_REG_B = 0x01;
+    public static final int HMC5883L_MODE_REG = 0x02;
+    public static final int HMC5883L_MEASURE_CONT = 0x00;
+    public static final int HMC5883L_MEASURE_SINGLE = 0x01;
+    public static final int HMC5883L_MEASURE_IDLE = 0x03;
+    public static final int HMC5883L_DATA = 0x03;
+    public static final int HMC5883L_M_TO_READ = 6; // 2 bytes for each axis x, y, z
     public static final int BMP085_ADDRESS = 0x77; //address of the Barometer
     
     public static final int BMA180_ADDRESS = 0x40; //address of the accelerometer
@@ -65,28 +79,12 @@ public class Robot extends TimedRobot {
     public static final int ITG3205_DATA = 0x1B;
     public static final int ITG3205_G_TO_READ = 8; // 2 bytes for each axis x, y, z, temp
     
-    public static final int HMC5883L_ADDRESS = 0x1E;
-    public static final int HMC5883L_CONFIG_REG_A = 0x00;
-    public static final int HMC5883L_CONFIG_REG_B = 0x01;
-    public static final int HMC5883L_MODE_REG = 0x02;
-    public static final int HMC5883L_MEASURE_CONT = 0x00;
-    public static final int HMC5883L_MEASURE_SINGLE = 0x01;
-    public static final int HMC5883L_MEASURE_IDLE = 0x03;
-    public static final int HMC5883L_DATA = 0x03;
-    public static final int HMC5883L_M_TO_READ = 6; // 2 bytes for each axis x, y, z
+    
   }
-  
-  // Create an instance of the I2C class for the device you want to communicate with
-  I2C device = new I2C(I2C.Port.kOnboard, SensorConstants.BMA180_ADDRESS);
 
-  // Define the register address to read from
-  byte register = 0x02;
-
-  // Create a buffer to hold the data read from the device
-  byte[] buffer = new byte[2];
 
   private static final String kDefaultAuto = "Default";
-  private static final String kCustomAuto = "thing";
+  private static final String kCustomAuto = "Balance";
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
@@ -169,32 +167,47 @@ public class Robot extends TimedRobot {
   private DigitalInput elevLimitT;
   private DigitalInput elbowLimit;
 
-  // private int elevStatus;
-
-  // private int wasRotate = 0;
-
-  // private boolean prevSwitchButton = armJoystick.getRawButton(2);
-
-  // private int activeMotors = 0;
-  // private double elev;
-  // private double pivot;
-  // private double elbow;
-  // private double wrist;
-
   private CANSparkMax elbowMotor = new CANSparkMax(Definitions.armPivot, CANSparkMax.MotorType.kBrushless);
   private CANSparkMax wristMotor = new CANSparkMax(Definitions.clawPivot, CANSparkMax.MotorType.kBrushless);
+
+  private RelativeEncoder elbowEncoder = elbowMotor.getEncoder();
+  private RelativeEncoder wristEncoder = wristMotor.getEncoder();
+  private RelativeEncoder uppyEncoder = uppy.getEncoder();
+
+  double elbowPos;
+  double wristPos;
+  double uppyPos;
+
+  
 
   private int i = 0;
   
 
   
 
-  /**
-   * This function is run when the robot is first started up and should be used for any
-   * initialization code.
-   */
-  @Override
-  public void robotInit() {
+
+@Override
+public void robotInit() {
+    // Create an instance of the I2C class for the gyroscope
+  I2C gyro = new I2C(I2C.Port.kOnboard, SensorConstants.ITG3205_ADDRESS);
+
+  // Define the register address to read from
+  byte register = SensorConstants.ITG3205_DATA;
+
+  // Create a buffer to hold the data read from the gyroscope
+  byte[] buffer = new byte[SensorConstants.ITG3205_G_TO_READ];
+
+  // Write to the register to initiate a read of the gyroscope data
+  gyro.write(register, SensorConstants.ITG3205_G_TO_READ);
+
+  // Read the data from the gyroscope
+  gyro.read(register, SensorConstants.ITG3205_G_TO_READ, buffer);
+
+
+  // Parse the data for each axis (x, y, z) from the buffer
+  int x = (buffer[0] << 8) | buffer[1];
+  int y = (buffer[2] << 8) | buffer[3];
+  int z = (buffer[4] << 8) | buffer[5];
     
     // define the limiters
     elbowLimit = new DigitalInput(Definitions.elbowLimit);
@@ -203,7 +216,7 @@ public class Robot extends TimedRobot {
 
     // create the autonomous modes in Shuffleboard
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
-    m_chooser.addOption("thing", kCustomAuto);
+    m_chooser.addOption("Balance", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
 
     // set the slave motors to follow the master motors
@@ -238,6 +251,10 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
+
+    double elbowPos = elbowEncoder.getPosition();
+    double wristPos = wristEncoder.getPosition();
+    double uppyPos = uppyEncoder.getPosition();
     // Read data from the device
     // device.read(register, buffer.length, buffer);
 
@@ -316,7 +333,7 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     m_autoSelected = m_chooser.getSelected();
-    // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
+    m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
 
     i = 0;
@@ -330,47 +347,48 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    if (i < 100) {
-      d_drive.arcadeDrive(0.5, 0);
-      i++;
-      } else {
-        d_drive.arcadeDrive(0, 0);
-    }
-    
-    // switch (m_autoSelected) {
-    //   case kCustomAuto:
-    //     if (i < 100) {
-    //     d_drive.arcadeDrive(0.5, 0);
-    //     i++;
-    //     } else {
-    //       d_drive.arcadeDrive(0, 0);
-    //     }
-    //   break;
-    //   case kDefaultAuto:
-    //   default:
-    //     // Put default auto code here
-    //     if (i < 100) {
-    //       d_drive.arcadeDrive(0.5, 0);
-    //       i++;
-    //     } else {
-    //       d_drive.arcadeDrive(0, 0);
-    //     }
-    //     break;
-        
+    // if (i < 100) {
+    //   d_drive.arcadeDrive(0.5, 0);
+    //   i++;
+    //   } else {
+    //     d_drive.arcadeDrive(0, 0);
     // }
+    
+    switch (m_autoSelected) {
+      case kCustomAuto:
+        
+      break;
+      case kDefaultAuto:
+      default:
+        // Put default auto code here
+        if (i < 100) {
+          d_drive.arcadeDrive(0.5, 0);
+          i++;
+        } else {
+          d_drive.arcadeDrive(0, 0);
+        }
+        break;
+        
+    }
   }
 
-
-
-
+  double kp = 0.1;
+  double ki = 0.001;
+  double kd = 0.001;
 
 
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
+    // Define PID controllers for elevator, elbow, and wrist
+    PIDController elevatorPID = new PIDController(kp, ki, kd);
+    PIDController elbowPID = new PIDController(kp, ki, kd);
+    PIDController wristPID = new PIDController(kp, ki, kd);
 
-    // activeMotors = 0;
-    
+    // Initialize the setpoints for the PID controllers to the current positions
+    elevatorPID.setSetpoint(uppyPos);
+    elbowPID.setSetpoint(elbowPos);
+    wristPID.setSetpoint(wristPos);
     
 
     // send the status of invTurning to the driver station
@@ -416,9 +434,6 @@ public class Robot extends TimedRobot {
     } else {
       wristMotor.set(-.03);
     }
-    
-
-
 
     //-----Claw-----
     
@@ -430,92 +445,6 @@ public class Robot extends TimedRobot {
       servo1.setAngle(90);
       servo2.setAngle(90);
     }
-    
-
-    // if (armJoystick.getRawButton(2) && !prevSwitchButton) {
-    //   if (activeMotors == 0) {
-    //     activeMotors = 1;
-    //   } else if (activeMotors == 1) {
-    //     activeMotors = 0;
-    //   }
-    // }
-
-    // prevSwitchButton = armJoystick.getRawButton(2);
-
-    // if (armJoystick.getRawButton(1) && !prevClawTrig) {
-    //   clawClosed = !clawClosed;
-    // }
-
-    // prevClawTrig = armJoystick.getRawButton(1);
-
-    // if (clawClosed) {
-    //   angle = 270;
-    // } else {
-    //   angle = 0;
-    // }
-
-    // servo1.setAngle(angle);
-    // if (angle == 270) {
-    //   servo2.setAngle(0);
-    // } else {
-    //   servo2.setAngle(270);
-    // }
-    
-    
-    // armX = -armJoystick.getX();
-    // armY = -armJoystick.getY();
-    // arm3 = ((-armJoystick.getZ())+1)/2;
-
-    // // adds a deadzone
-    // if (Math.abs(armX) < Definitions.c_joystick_deadzone)   { driveX = 0; }
-    // if (Math.abs(armY) < Definitions.c_joystick_deadzone)   { driveY = 0; }
-    // if (Math.abs(arm3) < Definitions.c_joystick_deadzone)   { driveZ = 0; }
-
-    // if (activeMotors == 0) {
-    //   elev = armY;
-    //   pivot = armX;
-    //   wrist = 0;
-    //   elbow = 0;
-    // } else if (activeMotors == 1) {
-    //   elev = 0;
-    //   pivot = 0;
-    //   wrist = armX;
-    //   elbow = armY;
-    // }
-    // if (Math.abs(elev)>0.05) {
-    //       elev = 0.1;
-    //     }
-
-    // if (elevLimitT.get()) {
-    //   elev = Math.max(armY, 0);
-    // } else if (elevLimitB.get()) {
-    //   elev = -Math.max(-armY, 0);
-    // }
-
-    // if (baseLimit.get()) {
-    //   if (pivot > 0 || wasRotate == 1) {
-    //     wasRotate = 1;
-    //     pivot = -Math.max(-armX, 0);
-    //   } else if (armX < 0 || wasRotate == -1) {
-    //     wasRotate = -1;
-    //     pivot = Math.max(armX, 0);
-    //   } else {
-    //     DriverStation.reportError("Base limiter hit but side cannot be determined!", false);
-    //   }
-    // } else {
-    //   wasRotate = 0;
-    // }
-
-    
-
-    // send armX and armY to spinny
-    // spinny.set(pivot*arm3*0.8);
-    // d_drive.arcadeDrive(0, 0);
-    // uppy.set(elev*0.8);
-    // elbowMotor.set(elbow*0.5);
-    // wristMotor.set(TalonSRXControlMode.Current, wrist);
-
-
     driveX = -c_joystick.getX();
     driveY = -c_joystick.getY();
     driveZ = -c_joystick.getZ();
@@ -526,22 +455,8 @@ public class Robot extends TimedRobot {
     if (Math.abs(driveZ) < Definitions.c_joystick_deadzone+0.05)   { driveZ = 0; }   
     
     turnMode = c_joystick.getRawButton(12);
-    // if Math.abs(driveX) izsaq1sn't more than 0.2 then driveZ can be used as steering
-    // if (Math.abs(driveX) < 0.2 && driveZ != 0)   { driveX = driveX+(driveZ*0.4); }
-    driveX = driveZ*0.75;
-    // driveX = Math.log(driveX);
 
-    // SmartDashboard.putNumber("Left Power", leftPower);
-    // SmartDashboard.putNumber("Right Power", rightPower);
-    // SmartDashboard.putBoolean("E-Stop", estop);
-    // SmartDashboard.putBoolean("Invert X on -Y", invTurning);
-    // SmartDashboard.putData("Drivetrain", d_drive);
-    // SmartDashboard.putBoolean("Turning", turning);
-    // SmartDashboard.putBoolean("Turn Left", turnLeft);
-    // SmartDashboard.putBoolean("Turn Right", turnRight);
-    // SmartDashboard.putBoolean("Throttle lever 0", throttleLever0);
-    // SmartDashboard.putBoolean("E-Stop", estop);
-    // SmartDashboard.putData("Drivetrain", d_drive);
+    driveX = driveZ*0.75;
 
     if (turnMode == true && prevTurnMode == false) { invTurning = !invTurning; }
 
