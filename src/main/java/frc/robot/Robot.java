@@ -85,8 +85,6 @@ public class Robot extends TimedRobot {
 
   private HttpCamera limelightFeed;
 
-  private int cyclesPerSecond = 50;
-
   Timer timer = new Timer();
 
   private boolean ignoreLimits = false;
