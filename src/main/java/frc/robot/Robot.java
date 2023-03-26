@@ -297,22 +297,19 @@ public class Robot extends TimedRobot {
     else
     {
       // Elevator
-      if (c_ps4.getR1Button()) { uppy.set(-.25); }
+      if      (c_ps4.getR1Button()) { uppy.set(-.25); }
       else if (c_ps4.getL1Button()) { uppy.set(.25); }
 
       // Elbow
-      if (c_ps4.getLeftY() < -.1) { elbowMotor.set(c_ps4.getLeftY()*.25); }
+      if      (c_ps4.getLeftY() < -.1) { elbowMotor.set(c_ps4.getLeftY()*.25); }
       else if (c_ps4.getLeftY() > .1) { elbowMotor.set(c_ps4.getLeftY()*.125); }
-      else { elbowMotor.set(-.05); }
+      else    { elbowMotor.set(-.05); }
     }
 
     //-----Wrist----
     
-    if (Math.abs(c_ps4.getRightY()) > .1){
-      wristMotor.set(c_ps4.getRightY()*.15);
-    } else {
-      wristMotor.set(-.03);
-    }
+    if   (Math.abs(c_ps4.getRightY()) > .1){ wristMotor.set(c_ps4.getRightY()*.15); }
+    else { wristMotor.set(-.03); }
 
     //-----Claw-----
     
@@ -326,6 +323,7 @@ public class Robot extends TimedRobot {
       servo1.setAngle(90);
       servo2.setAngle(90);
     }
+    
     driveX = -c_joystick.getX();
     driveY = -c_joystick.getY();
     driveZ = -c_joystick.getZ();
