@@ -26,4 +26,10 @@ public class Definitions {
     public static int clawServo2 = 7;
     public static int armPivot = 6;
     public static int clawPivot = 10;
+
+    public static int servo1Close = 175;
+    public static int servo1Open = 90;
+
+    public static int servo2Close = 40;
+    public static int servo2Open = 90;
 }

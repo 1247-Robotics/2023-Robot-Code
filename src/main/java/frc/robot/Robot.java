@@ -16,7 +16,7 @@ import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PS4Controller;
 
-import com.revrobotics.CANEncoder;
+// import com.revrobotics.CANEncoder;
 // import com.ctre.phoenix.motorcontrol.DemandType;
 // import com.ctre.phoenix.motorcontrol.TalonSRXControlMode;
 // import edu.wpi.first.wpilibj.PS4Controller;
@@ -24,16 +24,20 @@ import com.revrobotics.CANEncoder;
 // import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 // import java.sql.Driver;
 import com.revrobotics.CANSparkMax;
-import com.revrobotics.RelativeEncoder;
+// import com.revrobotics.RelativeEncoder;
 import com.revrobotics.CANSparkMax.IdleMode;
 
 // import com.revrobotics.CANSparkMax.IdleMode;
 // import edu.wpi.first.cameraserver.CameraServer;
 // import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.wpilibj.I2C;
+// import edu.wpi.first.wpilibj.I2C;
 import edu.wpi.first.wpilibj.Servo;
-import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.cscore.HttpCamera;
+// import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.Timer;
+
+import frc.robot.Claw_Servo;
 
 
 // import edu.wpi.first.wpilibj.controller.PIDController;
@@ -88,6 +92,13 @@ public class Robot extends TimedRobot {
   private String m_autoSelected;
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
 
+  private static final int Stage1 = 1;
+  private static final int Stage2 = 2;
+  private static final int Stage3 = 3;
+  private static final int Stage4 = 4;
+  private int Stage;
+
+
   // define the spark maxes
   private final CANSparkMax m_leftMaster = new CANSparkMax(Definitions.m_leftMaster, CANSparkMax.MotorType.kBrushless);
   private final CANSparkMax m_leftSlave = new CANSparkMax(Definitions.m_leftSlave, CANSparkMax.MotorType.kBrushless);
@@ -133,7 +144,6 @@ public class Robot extends TimedRobot {
   public double driveX = -c_joystick.getX();
   public double driveY = -c_joystick.getY();
   public double driveZ = -c_joystick.getZ();
-  // public double axis3 = (-c_joystick.getRawAxis(3)+1)/2;
 
   public double armX;
   public double armY;
@@ -148,12 +158,6 @@ public class Robot extends TimedRobot {
   public boolean move = false;
 
   public boolean prev10 = false;
-
-  //public double angle = armJoystick.getZ();
-
-  //public boolean prevClawTrig = armJoystick.getRawButton(1);
-
-  //public boolean clawTrig = armJoystick.getRawButton(1);
 
   public boolean clawClosed = false;
   public double clawAngleMax = 180;
@@ -170,44 +174,52 @@ public class Robot extends TimedRobot {
   private CANSparkMax elbowMotor = new CANSparkMax(Definitions.armPivot, CANSparkMax.MotorType.kBrushless);
   private CANSparkMax wristMotor = new CANSparkMax(Definitions.clawPivot, CANSparkMax.MotorType.kBrushless);
 
-  private RelativeEncoder elbowEncoder = elbowMotor.getEncoder();
-  private RelativeEncoder wristEncoder = wristMotor.getEncoder();
-  private RelativeEncoder uppyEncoder = uppy.getEncoder();
-
   double elbowPos;
   double wristPos;
   double uppyPos;
 
-  
+  private Claw_Servo cl_servoR = new Claw_Servo(Definitions.clawServo1);
+  private Claw_Servo cl_servoL = new Claw_Servo(Definitions.clawServo2);
 
   private int i = 0;
-  
 
-  
+  private HttpCamera limelightFeed;
 
+  private int cyclesPerSecond = 50;
 
-@Override
-public void robotInit() {
+  Timer timer = new Timer();
+
+  @Override
+  public void robotInit() {
+
+    cl_servoR.setClosed(Definitions.servo1Close);
+    cl_servoL.setClosed(Definitions.servo2Close);
+
+    cl_servoR.setOpen(Definitions.servo1Open);
+    cl_servoL.setOpen(Definitions.servo2Open);
     // Create an instance of the I2C class for the gyroscope
-  I2C gyro = new I2C(I2C.Port.kOnboard, SensorConstants.ITG3205_ADDRESS);
+    // I2C gyro = new I2C(I2C.Port.kOnboard, SensorConstants.ITG3205_ADDRESS);
 
-  // Define the register address to read from
-  byte register = SensorConstants.ITG3205_DATA;
+    // // Define the register address to read from
+    // byte register = SensorConstants.ITG3205_DATA;
 
-  // Create a buffer to hold the data read from the gyroscope
-  byte[] buffer = new byte[SensorConstants.ITG3205_G_TO_READ];
+    // // Create a buffer to hold the data read from the gyroscope
+    // byte[] buffer = new byte[SensorConstants.ITG3205_G_TO_READ];
 
-  // Write to the register to initiate a read of the gyroscope data
-  gyro.write(register, SensorConstants.ITG3205_G_TO_READ);
+    // // Write to the register to initiate a read of the gyroscope data
+    // gyro.write(register, SensorConstants.ITG3205_G_TO_READ);
 
-  // Read the data from the gyroscope
-  gyro.read(register, SensorConstants.ITG3205_G_TO_READ, buffer);
+    // // Read the data from the gyroscope
+    // gyro.read(register, SensorConstants.ITG3205_G_TO_READ, buffer);
 
 
-  // Parse the data for each axis (x, y, z) from the buffer
-  int x = (buffer[0] << 8) | buffer[1];
-  int y = (buffer[2] << 8) | buffer[3];
-  int z = (buffer[4] << 8) | buffer[5];
+    // // Parse the data for each axis (x, y, z) from the buffer
+    // int x = (buffer[0] << 8) | buffer[1];
+    // int y = (buffer[2] << 8) | buffer[3];
+    // int z = (buffer[4] << 8) | buffer[5];
+
+    limelightFeed = new HttpCamera("limelight", "http://limelight.local:5800/stream.mjpg");
+    // driverShuffleboardTab.add("LL", limelightFeed).withPosition(0, 0).withSize(15, 8).withProperties(Map.of("Show Crosshair", true, "Show Controls", false));
     
     // define the limiters
     elbowLimit = new DigitalInput(Definitions.elbowLimit);
@@ -251,25 +263,14 @@ public void robotInit() {
    */
   @Override
   public void robotPeriodic() {
-
-    double elbowPos = elbowEncoder.getPosition();
-    double wristPos = wristEncoder.getPosition();
-    double uppyPos = uppyEncoder.getPosition();
-    // Read data from the device
-    // device.read(register, buffer.length, buffer);
-
-    // Convert the buffer to a numerical value
-    // int numericalValue = (buffer[0] << 8) | buffer[1];
-
-    // Convert the numerical value to a double
-    // double value = Double.valueOf(numericalValue);
-    // SmartDashboard.putNumber("", value);
-
     // gets the current from the master motors
     leftPower = m_leftMaster.getOutputCurrent();
     rightPower = m_rightMaster.getOutputCurrent();
 
     turnMode = c_joystick.getRawButton(12);
+
+    SmartDashboard.putNumber("MATCH TIME", DriverStation.getMatchTime());
+    SmartDashboard.putNumber("MATCH NUMBER", DriverStation.getMatchNumber());
 
     
 
@@ -336,7 +337,14 @@ public void robotInit() {
     m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
 
+    servo1.setAngle(90);
+    servo2.setAngle(90);
+
+    timer.reset();
+    timer.start();
+
     i = 0;
+    Stage = 1;
   }
 
 
@@ -347,6 +355,8 @@ public void robotInit() {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
+
+    double timeElapsed = timer.get();
     // if (i < 100) {
     //   d_drive.arcadeDrive(0.5, 0);
     //   i++;
@@ -354,51 +364,65 @@ public void robotInit() {
     //     d_drive.arcadeDrive(0, 0);
     // }
     
-    switch (m_autoSelected) {
-      case kCustomAuto:
+    // switch (m_autoSelected) {
+    //   case kCustomAuto:
         
-      break;
-      case kDefaultAuto:
-      default:
-        // Put default auto code here
-        if (i < 100) {
-          d_drive.arcadeDrive(0.5, 0);
-          i++;
-        } else {
-          d_drive.arcadeDrive(0, 0);
-        }
+    //   break;
+    //   case kDefaultAuto:
+    //   default:
+    d_drive.arcadeDrive(0, 0);
+    switch (Stage) {
+
+      case Stage1:
+        if (timeElapsed <= 1) {
+          cl_servoR.close();
+          cl_servoL.close();
+          System.out.println("Autonomous Stage 1");
+        } else { Stage++; timer.reset(); }
         break;
-        
+
+      case Stage2:
+        if (timeElapsed <= 2) {
+          elbowMotor.set(0.2);
+          i++;
+          System.out.println("Autonomous Stage 2");
+          // Stage++;
+        } else { Stage++; timer.reset(); }
+        break;
+
+      case Stage3:
+        if (timeElapsed <= 2) {
+          servo1.setAngle(90);
+          servo2.setAngle(90);
+          i++;
+          System.out.println("Autonomous Stage 3");
+        } else { Stage++; timer.reset(); }
+        break;
+
+      case Stage4:
+        if (timeElapsed <= 4) {
+          if (timeElapsed < 2) { elbowMotor.set(0.1); }
+          d_drive.arcadeDrive(-0.7, 0);
+          System.out.println("Autonomous Stage 4");
+        } else { Stage++; timer.reset(); }
+        break;
+
+      default:
     }
+        // // Put default auto code here
+        // if (i < (2.5*cyclesPerSecond)) {
+        //   d_drive.arcadeDrive(-1, 0);
+        //   i++;
+        // } else {
+        //   d_drive.arcadeDrive(0, 0);
+        // }
+        // break;
+        
   }
-
-  double kp = 0.1;
-  double ki = 0.001;
-  double kd = 0.001;
-
 
   /** This function is called once when teleop is enabled. */
   @Override
-  public void teleopInit() {
-    // Define PID controllers for elevator, elbow, and wrist
-    PIDController elevatorPID = new PIDController(kp, ki, kd);
-    PIDController elbowPID = new PIDController(kp, ki, kd);
-    PIDController wristPID = new PIDController(kp, ki, kd);
-
-    // Initialize the setpoints for the PID controllers to the current positions
-    elevatorPID.setSetpoint(uppyPos);
-    elbowPID.setSetpoint(elbowPos);
-    wristPID.setSetpoint(wristPos);
-    
-
-    // send the status of invTurning to the driver station
-    DriverStation.reportWarning("invTurning: " + invTurning, false);
-  }
-
-
-
-
-
+  public void teleopInit() {}
   
   /** This function is called periodically during operator control. */
   @Override
@@ -409,8 +433,6 @@ public void robotInit() {
       uppy.set(-.25);
     } else if(!elevLimitB.get() && c_ps4.getL1Button()){
       uppy.set(.25);
-    } else {
-      uppy.set(-.0125);
     }
 
     //-----Elbow-----
@@ -439,9 +461,11 @@ public void robotInit() {
     
     //System.out.println("Claw Open Button: " +  c_ps4.getR2Button());
     if (c_ps4.getL2ButtonPressed()){
+      // Close
       servo1.setAngle(150);
       servo2.setAngle(20);
     } else if (c_ps4.getR2Button()){
+      // Open
       servo1.setAngle(90);
       servo2.setAngle(90);
     }
@@ -509,13 +533,44 @@ public void robotInit() {
     }
   }
 
+  int servo1Pos = 90;
+  int servo2Pos = 90;
+
+  
   /** This function is called once when test mode is enabled. */
   @Override
-  public void testInit() {}
+  public void testInit() {
+    servo1Pos = 90;
+    servo2Pos = 90;
+
+    servo1.setAngle(servo1Pos);
+    servo2.setAngle(servo2Pos);
+  }
 
   /** This function is called periodically during test mode. */
   @Override
-  public void testPeriodic() {}
+  public void testPeriodic() {
+    if (c_ps4.getTriangleButtonPressed()) {
+      servo1Pos += 5;
+      servo1.setAngle(servo1Pos);
+      System.out.println(servo1Pos);
+    }
+    if (c_ps4.getCircleButtonPressed()) {
+      servo2Pos += 5;
+      servo2.setAngle(servo2Pos);
+      System.out.println(servo2Pos);
+    }
+    if (c_ps4.getSquareButtonPressed()) {
+      servo2Pos -= 5;
+      servo2.setAngle(servo2Pos);
+      System.out.println(servo2Pos);
+    }
+    if (c_ps4.getCrossButtonPressed()) {
+      servo1Pos -= 5;
+      servo1.setAngle(servo1Pos);
+      System.out.println(servo1Pos);
+    }
+  }
 
   /** This function is called once when the robot is first started up. */
   @Override
