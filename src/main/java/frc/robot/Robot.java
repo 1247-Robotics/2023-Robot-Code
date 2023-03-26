@@ -189,6 +189,8 @@ public class Robot extends TimedRobot {
 
   Timer timer = new Timer();
 
+  private boolean ignoreLimits = false;
+
   @Override
   public void robotInit() {
 
@@ -416,25 +418,40 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    //------Elevator-----
-    System.out.println(!elevLimitB.get() +", "+  c_ps4.getL1Button());
-    if (!elevLimitT.get() && c_ps4.getR1Button()){
-      uppy.set(-.25);
-    } else if(!elevLimitB.get() && c_ps4.getL1Button()){
-      uppy.set(.25);
-    }
+    if (c_joystick.getRawButtonPressed(2)) { ignoreLimits = !ignoreLimits; }
 
-    //-----Elbow-----
-    System.out.println(elbowLimit.get());
-    if (!elbowLimit.get() && c_ps4.getLeftY() < -.1){
-      elbowMotor.set(c_ps4.getLeftY()*.25);
-    } else if (c_ps4.getLeftY() > .1){
-      elbowMotor.set(c_ps4.getLeftY()*.125);
-    } else if (!elbowLimit.get()) {
-      elbowMotor.set(-.05);
-      //elbowMotor.set(0);
-    } else {
-      elbowMotor.set(0);
+    if (!ignoreLimits) {
+      //------Elevator-----
+      System.out.println(!elevLimitB.get() +", "+  c_ps4.getL1Button());
+      if (!elevLimitT.get() && c_ps4.getR1Button()){
+        uppy.set(-.25);
+      } else if(!elevLimitB.get() && c_ps4.getL1Button()){
+        uppy.set(.25);
+      }
+
+      //-----Elbow-----
+      System.out.println(elbowLimit.get());
+      if (!elbowLimit.get() && c_ps4.getLeftY() < -.1){
+        elbowMotor.set(c_ps4.getLeftY()*.25);
+      } else if (c_ps4.getLeftY() > .1){
+        elbowMotor.set(c_ps4.getLeftY()*.125);
+      } else if (!elbowLimit.get()) {
+        elbowMotor.set(-.05);
+        //elbowMotor.set(0);
+      } else {
+        elbowMotor.set(0);
+      }
+    }
+    else
+    {
+      // Elevator
+      if (c_ps4.getR1Button()) { uppy.set(-.25); }
+      else if (c_ps4.getL1Button()) { uppy.set(.25); }
+
+      // Elbow
+      if (c_ps4.getLeftY() < -.1) { elbowMotor.set(c_ps4.getLeftY()*.25); }
+      else if (c_ps4.getLeftY() > .1) { elbowMotor.set(c_ps4.getLeftY()*.125); }
+      else { elbowMotor.set(-.05); }
     }
 
     //-----Wrist----
