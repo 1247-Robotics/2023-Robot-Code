@@ -384,7 +384,6 @@ public class Robot extends TimedRobot {
       case Stage2:
         if (timeElapsed <= 2) {
           elbowMotor.set(0.2);
-          i++;
           System.out.println("Autonomous Stage 2");
           // Stage++;
         } else { Stage++; timer.reset(); }
@@ -394,7 +393,6 @@ public class Robot extends TimedRobot {
         if (timeElapsed <= 2) {
           servo1.setAngle(90);
           servo2.setAngle(90);
-          i++;
           System.out.println("Autonomous Stage 3");
         } else { Stage++; timer.reset(); }
         break;
