@@ -406,16 +406,7 @@ public class Robot extends TimedRobot {
         break;
 
       default:
-    }
-        // // Put default auto code here
-        // if (i < (2.5*cyclesPerSecond)) {
-        //   d_drive.arcadeDrive(-1, 0);
-        //   i++;
-        // } else {
-        //   d_drive.arcadeDrive(0, 0);
-        // }
-        // break;
-        
+    }        
   }
 
   /** This function is called once when teleop is enabled. */
@@ -434,7 +425,6 @@ public class Robot extends TimedRobot {
     }
 
     //-----Elbow-----
-    //System.out.println("Left Y Val: " + c_ps4.getLeftY());
     System.out.println(elbowLimit.get());
     if (!elbowLimit.get() && c_ps4.getLeftY() < -.1){
       elbowMotor.set(c_ps4.getLeftY()*.25);
@@ -470,7 +460,6 @@ public class Robot extends TimedRobot {
     driveX = -c_joystick.getX();
     driveY = -c_joystick.getY();
     driveZ = -c_joystick.getZ();
-    // axis3 = (-c_joystick.getRawAxis(3)+2/2);
 
     if (Math.abs(driveX) < Definitions.c_joystick_deadzone)   { driveX = 0; }
     if (Math.abs(driveY) < Definitions.c_joystick_deadzone)   { driveY = 0; }
@@ -500,7 +489,7 @@ public class Robot extends TimedRobot {
     }
 
     // if turning is set to invert, invert the driveX value when the driveY value is less than 0
-    if (invTurning) { driveX = -driveX; }
+    if (invTurning) { driveY = -driveY; }
 
     // drive the robot
     d_drive.arcadeDrive(driveY, driveX);
@@ -549,24 +538,30 @@ public class Robot extends TimedRobot {
   @Override
   public void testPeriodic() {
     if (c_ps4.getTriangleButtonPressed()) {
-      servo1Pos += 5;
-      servo1.setAngle(servo1Pos);
+      cl_servoR.set(cl_servoR.current() + 5);
       System.out.println(servo1Pos);
     }
     if (c_ps4.getCircleButtonPressed()) {
-      servo2Pos += 5;
-      servo2.setAngle(servo2Pos);
+      cl_servoL.set(cl_servoL.current() + 5);
       System.out.println(servo2Pos);
     }
     if (c_ps4.getSquareButtonPressed()) {
-      servo2Pos -= 5;
-      servo2.setAngle(servo2Pos);
+      cl_servoL.set(cl_servoL.current() - 5);
       System.out.println(servo2Pos);
     }
     if (c_ps4.getCrossButtonPressed()) {
-      servo1Pos -= 5;
-      servo1.setAngle(servo1Pos);
+      cl_servoR.set(cl_servoR.current() - 5);
       System.out.println(servo1Pos);
+    }
+    if (c_ps4.getL1ButtonPressed()) {
+      if (cl_servoL.isOpen()) {
+        cl_servoL.close();
+      } else { cl_servoL.open(); }
+      }
+    if (c_ps4.getR1ButtonPressed()) {
+      if (cl_servoR.isOpen()) {
+        cl_servoL.close();
+      } else { cl_servoL.open(); }
     }
   }
 
