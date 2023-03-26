@@ -418,7 +418,9 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    if (c_joystick.getRawButtonPressed(2)) { ignoreLimits = !ignoreLimits; }
+    if (c_joystick.getRawButtonPressed(2) && c_joystick.getRawButton(1)) { ignoreLimits = !ignoreLimits; }
+
+    if (c_ps4.getTriangleButtonPressed() && c_ps4.getSquareButtonPressed()) { ignoreLimits = !ignoreLimits; }
 
     if (!ignoreLimits) {
       //------Elevator-----
