@@ -57,8 +57,8 @@ public class Robot extends TimedRobot {
   // define the differential drive
   public final DifferentialDrive d_drive = new DifferentialDrive(m_leftMaster, m_rightMaster);
 
-  public Servo servo1;
-  public Servo servo2;
+  // public Servo servo1;
+  // public Servo servo2;
 
   public boolean prevTurnMode   = false;
   public boolean turnMode       = false;
@@ -128,8 +128,8 @@ public class Robot extends TimedRobot {
     m_leftSlave.setIdleMode(CANSparkMax.IdleMode.kBrake);
 
     // define the claw servos
-    servo1 = new Servo(Definitions.clawServo1);
-    servo2 = new Servo(Definitions.clawServo2);
+    // servo1 = new Servo(Definitions.clawServo1);
+    // servo2 = new Servo(Definitions.clawServo2);
 
   }
 
@@ -167,6 +167,12 @@ public class Robot extends TimedRobot {
     SmartDashboard.putBoolean("Turn Left", turnLeft);
     SmartDashboard.putBoolean("Turn Right", turnRight);
     SmartDashboard.putData("Drivetrain", d_drive);
+
+    SmartDashboard.putNumber("Arm", elbowMotor.get());
+    SmartDashboard.putNumber("Wrist", wristMotor.get());
+    SmartDashboard.putNumber("Elevator", uppy.get());
+    SmartDashboard.putNumber("Left Claw Servo", cl_servoL.current());
+    SmartDashboard.putNumber("Right Claw Servo", cl_servoR.current());
   }
 
 
@@ -190,8 +196,8 @@ public class Robot extends TimedRobot {
     m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
 
-    servo1.setAngle(90);
-    servo2.setAngle(90);
+    cl_servoL.open();
+    cl_servoR.open();
 
     timer.reset();
     timer.start();
@@ -243,8 +249,8 @@ public class Robot extends TimedRobot {
 
       case Stage3:
         if (timeElapsed <= 2) {
-          servo1.setAngle(90);
-          servo2.setAngle(90);
+          cl_servoR.open();
+          cl_servoL.open();
           System.out.println("Autonomous Stage 3");
         } else { Stage++; timer.reset(); }
         break;
@@ -316,14 +322,14 @@ public class Robot extends TimedRobot {
     //System.out.println("Claw Open Button: " +  c_ps4.getR2Button());
     if (c_ps4.getL2ButtonPressed()){
       // Close
-      servo1.setAngle(150);
-      servo2.setAngle(20);
+      cl_servoR.close();
+      cl_servoL.close();
     } else if (c_ps4.getR2Button()){
       // Open
-      servo1.setAngle(90);
-      servo2.setAngle(90);
+      cl_servoR.open();
+      cl_servoL.open();
     }
-    
+
     driveX = -c_joystick.getX();
     driveY = -c_joystick.getY();
     driveZ = -c_joystick.getZ();
@@ -397,8 +403,8 @@ public class Robot extends TimedRobot {
     servo1Pos = 90;
     servo2Pos = 90;
 
-    servo1.setAngle(servo1Pos);
-    servo2.setAngle(servo2Pos);
+    cl_servoR.set(servo1Pos);
+    cl_servoL.set(servo2Pos);
   }
 
   /** This function is called periodically during test mode. */
