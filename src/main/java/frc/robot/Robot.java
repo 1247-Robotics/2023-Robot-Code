@@ -37,6 +37,7 @@ public class Robot extends TimedRobot {
   private static final int Stage2 = 2;
   private static final int Stage3 = 3;
   private static final int Stage4 = 4;
+  private static final int Stage5 = 5;
   private int Stage;
 
 
@@ -45,7 +46,7 @@ public class Robot extends TimedRobot {
   private final CANSparkMax m_leftSlave   = new CANSparkMax(Definitions.m_leftSlave, CANSparkMax.MotorType.kBrushless);
   private final CANSparkMax m_rightMaster = new CANSparkMax(Definitions.m_rightMaster, CANSparkMax.MotorType.kBrushless);
   private final CANSparkMax m_rightSlave  = new CANSparkMax(Definitions.m_rightSlave, CANSparkMax.MotorType.kBrushless);
-  private final CANSparkMax uppy          = new CANSparkMax(Definitions.uppy, CANSparkMax.MotorType.kBrushless);
+  // private final CANSparkMax uppy          = new CANSparkMax(Definitions.uppy, CANSparkMax.MotorType.kBrushless);
   private final CANSparkMax elbowMotor    = new CANSparkMax(Definitions.armPivot, CANSparkMax.MotorType.kBrushless);
   private final CANSparkMax wristMotor    = new CANSparkMax(Definitions.clawPivot, CANSparkMax.MotorType.kBrushless);
 
@@ -169,9 +170,11 @@ public class Robot extends TimedRobot {
 
     SmartDashboard.putNumber("Arm", elbowMotor.get());
     SmartDashboard.putNumber("Wrist", wristMotor.get());
-    SmartDashboard.putNumber("Elevator", uppy.get());
+    // SmartDashboard.putNumber("Elevator", uppy.get());
     SmartDashboard.putNumber("Left Claw Servo", cl_servoL.current());
     SmartDashboard.putNumber("Right Claw Servo", cl_servoR.current());
+
+    SmartDashboard.putBoolean("Ignore limiters", ignoreLimits);
   }
 
 
@@ -231,7 +234,7 @@ public class Robot extends TimedRobot {
     switch (Stage) {
 
       case Stage1:
-        if (timeElapsed <= 1) {
+        if (timeElapsed <= .2) {
           cl_servoR.close();
           cl_servoL.close();
           System.out.println("Autonomous Stage 1");
@@ -239,15 +242,15 @@ public class Robot extends TimedRobot {
         break;
 
       case Stage2:
-        if (timeElapsed <= 2) {
-          elbowMotor.set(0.2);
+        if (timeElapsed <= 1) {
+          elbowMotor.set(0.15);
           System.out.println("Autonomous Stage 2");
           // Stage++;
         } else { Stage++; timer.reset(); }
         break;
 
       case Stage3:
-        if (timeElapsed <= 2) {
+        if (timeElapsed <= .3) {
           cl_servoR.open();
           cl_servoL.open();
           System.out.println("Autonomous Stage 3");
@@ -255,10 +258,13 @@ public class Robot extends TimedRobot {
         break;
 
       case Stage4:
-        if (timeElapsed <= 4) {
-          if (timeElapsed < 2) { elbowMotor.set(0.1); }
-          d_drive.arcadeDrive(-0.7, 0);
-          System.out.println("Autonomous Stage 4");
+        if (timeElapsed <= 2) { elbowMotor.set(-0.3); }
+        else { Stage++; timer.reset(); }
+        break;
+      case Stage5:
+          if (timeElapsed <= 2.5) {
+          d_drive.arcadeDrive(-0.6, 0);
+          System.out.println("Autonomous Stage 5");
         } else { Stage++; timer.reset(); }
         break;
 
@@ -273,18 +279,18 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    if (c_joystick.getRawButtonPressed(2) && c_joystick.getRawButton(1)) { ignoreLimits = !ignoreLimits; }
+    if (c_joystick.getRawButton(2) && c_joystick.getRawButton(1)) { ignoreLimits = !ignoreLimits; }
 
-    if (c_ps4.getTriangleButtonPressed() && c_ps4.getSquareButtonPressed()) { ignoreLimits = !ignoreLimits; }
+    if (c_ps4.getTriangleButton() && c_ps4.getSquareButton()) { ignoreLimits = !ignoreLimits; }
 
     if (!ignoreLimits) {
-      //------Elevator-----
-      System.out.println(!elevLimitB.get() +", "+  c_ps4.getL1Button());
-      if (!elevLimitT.get() && c_ps4.getR1Button()){
-        uppy.set(-.25);
-      } else if(!elevLimitB.get() && c_ps4.getL1Button()){
-        uppy.set(.25);
-      }
+      // //------Elevator-----
+      // System.out.println(!elevLimitB.get() +", "+  c_ps4.getL1Button());
+      // if (!elevLimitT.get() && c_ps4.getR1Button()){
+      //   uppy.set(-.25);
+      // } else if(!elevLimitB.get() && c_ps4.getL1Button()){
+      //   uppy.set(.25);
+      // }
 
       //-----Elbow-----
       System.out.println(elbowLimit.get());
@@ -301,9 +307,9 @@ public class Robot extends TimedRobot {
     }
     else
     {
-      // Elevator
-      if      (c_ps4.getR1Button()) { uppy.set(-.25); }
-      else if (c_ps4.getL1Button()) { uppy.set(.25); }
+      // // Elevator
+      // if      (c_ps4.getR1Button()) { uppy.set(-.25); }
+      // else if (c_ps4.getL1Button()) { uppy.set(.25); }
 
       // Elbow
       if      (c_ps4.getLeftY() < -.1) { elbowMotor.set(c_ps4.getLeftY()*.25); }
@@ -319,14 +325,15 @@ public class Robot extends TimedRobot {
     //-----Claw-----
     
     //System.out.println("Claw Open Button: " +  c_ps4.getR2Button());
-    if (c_ps4.getL2ButtonPressed()){
-      // Close
-      cl_servoR.close();
-      cl_servoL.close();
-    } else if (c_ps4.getR2Button()){
-      // Open
-      cl_servoR.open();
-      cl_servoL.open();
+    if (c_ps4.getL2ButtonPressed() || c_ps4.getR2ButtonPressed()){
+      if (cl_servoL.isClosed()) {
+        // Close
+        cl_servoR.open();
+        cl_servoL.open();
+      } else {
+        cl_servoR.close();
+        cl_servoL.close();
+      }
     }
 
     driveX = -c_joystick.getX();
@@ -339,7 +346,7 @@ public class Robot extends TimedRobot {
     
     turnMode = c_joystick.getRawButton(12);
 
-    driveX = driveZ*0.75;
+    driveX = driveZ*0.75+driveX*0.4;
 
     if (turnMode == true && prevTurnMode == false) { invTurning = !invTurning; }
 
@@ -409,21 +416,23 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {
+    SmartDashboard.putNumber("Left Claw Servo", cl_servoL.current());
+    SmartDashboard.putNumber("Right Claw Servo", cl_servoR.current());
     if (c_ps4.getTriangleButtonPressed()) {
-      cl_servoR.set(cl_servoR.current() + 5);
-      System.out.println(servo1Pos);
+      cl_servoR.set(cl_servoR.getLastManual() + 5);
+      System.out.println(cl_servoR.getLastManual());
     }
     if (c_ps4.getCircleButtonPressed()) {
-      cl_servoL.set(cl_servoL.current() + 5);
-      System.out.println(servo2Pos);
+      cl_servoL.set(cl_servoL.getLastManual() + 5);
+      System.out.println(cl_servoL.getLastManual());
     }
     if (c_ps4.getSquareButtonPressed()) {
-      cl_servoL.set(cl_servoL.current() - 5);
-      System.out.println(servo2Pos);
+      cl_servoL.set(cl_servoL.getLastManual() - 5);
+      System.out.println(cl_servoL.getLastManual());
     }
     if (c_ps4.getCrossButtonPressed()) {
-      cl_servoR.set(cl_servoR.current() - 5);
-      System.out.println(servo1Pos);
+      cl_servoR.set(cl_servoR.getLastManual() - 5);
+      System.out.println(cl_servoR.getLastManual());
     }
     if (c_ps4.getL1ButtonPressed()) {
       if (cl_servoL.isOpen()) {
@@ -432,8 +441,8 @@ public class Robot extends TimedRobot {
       }
     if (c_ps4.getR1ButtonPressed()) {
       if (cl_servoR.isOpen()) {
-        cl_servoL.close();
-      } else { cl_servoL.open(); }
+        cl_servoR.close();
+      } else { cl_servoR.open(); }
     }
   }
 

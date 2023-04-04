@@ -7,7 +7,7 @@ public class Definitions {
     public static int m_rightMaster = 3;
     public static int m_rightSlave = 4;
     //public static int spinny = 10;
-    public static int uppy = 9;
+    // public static int uppy = 9;
 
     public static int c_joystick = 0;
     public static int armJoystick = 1;
@@ -27,11 +27,11 @@ public class Definitions {
     public static int armPivot = 6;
     public static int clawPivot = 10;
 
-    public static int servo1Close = 175;
+    public static int servo1Close = 180;
     public static int servo1Open = 90;
 
-    public static int servo2Close = 40;
-    public static int servo2Open = 90;
+    public static int servo2Close = 45;
+    public static int servo2Open = 140;
 }
 
 // public class SensorConstants {
