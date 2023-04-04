@@ -76,8 +76,8 @@ public class Robot extends TimedRobot {
   public double driveZ = -c_joystick.getZ();
 
   //private DigitalInput baseLimit;
-  private DigitalInput elevLimitB;
-  private DigitalInput elevLimitT;
+  // private DigitalInput elevLimitB;
+  // private DigitalInput elevLimitT;
   private DigitalInput elbowLimit;
 
   private Claw_Servo cl_servoR = new Claw_Servo(Definitions.clawServo1);
@@ -102,8 +102,8 @@ public class Robot extends TimedRobot {
 
     // define the limiters
     elbowLimit = new DigitalInput(Definitions.elbowLimit);
-    elevLimitB = new DigitalInput(Definitions.elevLimitB);
-    elevLimitT = new DigitalInput(Definitions.elevLimitT);
+    // elevLimitB = new DigitalInput(Definitions.elevLimitB);
+    // elevLimitT = new DigitalInput(Definitions.elevLimitT);
 
     // create the autonomous modes in Shuffleboard
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
