@@ -317,23 +317,17 @@ public class Robot extends TimedRobot {
       else    { elbowMotor.set(-.05); }
     }
 
-    //-----Wrist----
+    // //-----Wrist----
     
-    if   (Math.abs(c_ps4.getRightY()) > .1){ wristMotor.set(c_ps4.getRightY()*.15); }
-    else { wristMotor.set(-.03); }
+    // if   (Math.abs(c_ps4.getRightY()) > .1){ wristMotor.set(c_ps4.getRightY()*.15); }
+    // else { wristMotor.set(-.03); }
 
     //-----Claw-----
     
     //System.out.println("Claw Open Button: " +  c_ps4.getR2Button());
     if (c_ps4.getL2ButtonPressed() || c_ps4.getR2ButtonPressed()){
-      if (cl_servoL.isClosed()) {
-        // Close
-        cl_servoR.open();
-        cl_servoL.open();
-      } else {
-        cl_servoR.close();
-        cl_servoL.close();
-      }
+      cl_servoR.not();
+      cl_servoL.not();
     }
 
     driveX = -c_joystick.getX();

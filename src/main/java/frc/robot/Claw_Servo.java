@@ -68,4 +68,9 @@ public class Claw_Servo {
     }
 
     public void setAngle(int Angle) { this.set(Angle); }
+
+    public void not() { 
+        if (this.isOpen()) {  this.close();  }
+        else {  this.open();  }
+    }
 }
