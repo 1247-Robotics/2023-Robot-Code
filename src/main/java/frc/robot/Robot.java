@@ -204,7 +204,7 @@ public class Robot extends TimedRobot {
     timer.reset();
     timer.start();
 
-    Stage = 1;
+    Stage = 1; // Set to ! 1-5 to do nothing, set to 5 to just drive backwards and get a movement point
   }
 
 
@@ -235,40 +235,40 @@ public class Robot extends TimedRobot {
 
       case Stage1:
         if (timeElapsed <= .2) {
-          cl_servoR.close();
-          cl_servoL.close();
+          cl_servoR.close(); // Close the left claw
+          cl_servoL.close(); // CLose the right claw
           System.out.println("Autonomous Stage 1");
-        } else { Stage++; timer.reset(); }
+        } else { Stage++; timer.reset(); } // Progress a stage
         break;
 
       case Stage2:
         if (timeElapsed <= 1) {
-          elbowMotor.set(0.15);
+          elbowMotor.set(0.15); // Set the elbow to 0.15 ( moves down )
           System.out.println("Autonomous Stage 2");
           // Stage++;
-        } else { Stage++; timer.reset(); }
+        } else { Stage++; timer.reset(); } // Progress a stage
         break;
 
       case Stage3:
         if (timeElapsed <= .3) {
-          cl_servoR.open();
-          cl_servoL.open();
+          cl_servoR.open(); // Open the claw
+          cl_servoL.open(); // Open the claw
           System.out.println("Autonomous Stage 3");
-        } else { Stage++; timer.reset(); }
+        } else { Stage++; timer.reset(); } // Progress a stage
         break;
 
       case Stage4:
-        if (timeElapsed <= 2) { elbowMotor.set(-0.3); }
-        else { Stage++; timer.reset(); }
+        if (timeElapsed <= 2) { elbowMotor.set(-0.3); } // Set the elbow to -0.3 ( moves up )
+        else { Stage++; timer.reset(); } // Progress a stage
         break;
       case Stage5:
           if (timeElapsed <= 2.5) {
-          d_drive.arcadeDrive(-0.6, 0);
+          d_drive.arcadeDrive(-0.6, 0); // Drive at -0.6 @ 0 turn ( backwards )
           System.out.println("Autonomous Stage 5");
-        } else { Stage++; timer.reset(); }
+        } else { Stage++; timer.reset(); } // Progress a stage ( there are no more stages so this will progress to default which is empty )
         break;
 
-      default:
+      default: // Do nothing
     }        
   }
 
